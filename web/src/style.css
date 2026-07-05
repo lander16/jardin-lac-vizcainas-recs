@@ -1066,3 +1066,142 @@ svg text {
   overflow-y: auto;
 }
 
+/* =============================================================================
+   Catalog Section (Koha Authority Graph)
+   ============================================================================= */
+
+/* Authority type badges */
+.catalog-auth-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.2rem 0.55rem;
+  border-radius: 0.2rem;
+  border: 1px solid;
+  white-space: nowrap;
+  transition: transform 0.15s ease;
+}
+
+.catalog-auth-badge:hover {
+  transform: scale(1.04);
+}
+
+.catalog-auth-badge i {
+  font-size: 0.65rem;
+}
+
+/* Authority type grid (stats chips) */
+.catalog-type-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.catalog-type-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 0.75rem;
+  border-radius: 0.25rem;
+  font-size: 0.82rem;
+  transition: transform 0.15s ease;
+}
+
+.catalog-type-chip:hover {
+  transform: translateY(-1px);
+}
+
+.catalog-type-count {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.9rem;
+  margin-left: 0.25rem;
+}
+
+/* Book cards in catalog explorer */
+.catalog-book-card {
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.catalog-book-card:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.catalog-book-card:first-child {
+  padding-top: 0;
+}
+
+.catalog-book-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 0.65rem;
+}
+
+.catalog-book-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.catalog-book-title {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  text-decoration: none;
+  line-height: 1.25;
+  display: block;
+  margin-bottom: 0.2rem;
+}
+
+.catalog-book-title:hover {
+  color: var(--color-accent);
+  text-decoration: underline;
+}
+
+.catalog-book-author {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+}
+
+.catalog-book-author i {
+  color: var(--text-muted);
+  margin-right: 0.15rem;
+}
+
+.catalog-book-stats {
+  flex-shrink: 0;
+}
+
+/* Authority tags list */
+.catalog-auth-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+/* Outline button variant */
+.btn-outline {
+  background: transparent;
+  border: 1px solid var(--border-light);
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-radius: 0.25rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+.btn-outline:hover {
+  background: var(--bg-secondary);
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}

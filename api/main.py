@@ -5,6 +5,7 @@ from pydantic import BaseModel
 import os
 
 from api.recommender import RecommenderEngine
+from api.catalog import CatalogEngine
 
 app = FastAPI(title="Vizcaínas Library Recommendation API")
 
@@ -22,6 +23,7 @@ app.add_middleware(
 data_dir = "data"
 csv_path = "synthetic_checkouts.csv"
 engine = RecommenderEngine(data_dir=data_dir, csv_path=csv_path)
+catalog_engine = CatalogEngine(data_dir="data/koha")
 
 class CheckoutRequest(BaseModel):
     book_id: str
@@ -104,6 +106,43 @@ def reset_checkouts():
         os.remove(engine.active_checkouts_path)
     engine.load_data()
     return {"status": "success", "message": "Checkouts reset to CSV baseline"}
+
+# =============================================================================
+# Catalog Endpoints (Koha authority-based book connections)
+# =============================================================================
+
+@app.get("/api/catalog/stats")
+def catalog_stats():
+    return catalog_engine.get_stats()
+
+@app.get("/api/catalog/books")
+def catalog_books(q: str = Query(None), limit: int = Query(100, le=500)):
+    return catalog_engine.get_books_list(query=q, limit=limit)
+
+@app.get("/api/catalog/books/{biblio_id}")
+def catalog_book_detail(biblio_id: str):
+    detail = catalog_engine.get_book_detail(biblio_id)
+    if not detail:
+        raise HTTPException(status_code=404, detail="Book not found in catalog")
+    return detail
+
+@app.get("/api/catalog/graph/{biblio_id}")
+def catalog_graph(biblio_id: str, limit: int = Query(15, le=30)):
+    data = catalog_engine.get_graph_data(biblio_id, max_connections=limit)
+    if not data["nodes"]:
+        raise HTTPException(status_code=404, detail="Book not found or has no connections")
+    return data
+
+@app.get("/api/catalog/authorities")
+def catalog_authorities(type: str = Query(None), limit: int = Query(100, le=500)):
+    return catalog_engine.get_authorities_list(auth_type=type, limit=limit)
+
+@app.get("/api/catalog/authorities/{authority_id}")
+def catalog_authority_detail(authority_id: str):
+    detail = catalog_engine.get_authority_detail(authority_id)
+    if not detail:
+        raise HTTPException(status_code=404, detail="Authority not found")
+    return detail
 
 # Serve static files from Vite build directory in production
 if os.path.exists("web/dist"):

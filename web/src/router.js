@@ -94,6 +94,9 @@ export class Router {
           <a href="#/" class="nav-link" id="nav-dashboard">
             <i class="fa-solid fa-chart-line"></i> Inicio
           </a>
+          <a href="#/catalog" class="nav-link" id="nav-catalog">
+            <i class="fa-solid fa-building-columns"></i> Catálogo
+          </a>
         </nav>
       </header>
       <main class="container" id="router-view"></main>

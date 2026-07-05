@@ -48,4 +48,29 @@ export const api = {
   getStats: () => fetchAPI('/stats'),
   
   resetCheckouts: () => fetchAPI('/reset', { method: 'POST' }),
+
+  // --- Catalog (Koha) endpoints ---
+  getCatalogStats: () => fetchAPI('/catalog/stats'),
+
+  getCatalogBooks: (query = '', limit = 100) => {
+    const params = new URLSearchParams();
+    if (query) params.set('q', query);
+    if (limit) params.set('limit', limit);
+    return fetchAPI(`/catalog/books?${params.toString()}`);
+  },
+
+  getCatalogBook: (biblioId) => fetchAPI(`/catalog/books/${biblioId}`),
+
+  getCatalogGraph: (biblioId, limit = 15) =>
+    fetchAPI(`/catalog/graph/${biblioId}?limit=${limit}`),
+
+  getCatalogAuthorities: (type = null, limit = 100) => {
+    const params = new URLSearchParams();
+    if (type) params.set('type', type);
+    if (limit) params.set('limit', limit);
+    return fetchAPI(`/catalog/authorities?${params.toString()}`);
+  },
+
+  getCatalogAuthority: (authorityId) =>
+    fetchAPI(`/catalog/authorities/${authorityId}`),
 };

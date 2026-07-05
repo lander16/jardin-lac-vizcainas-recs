@@ -4,13 +4,17 @@ import { DashboardPage } from './pages/dashboard.js';
 import { UserRecommendationsPage } from './pages/user-recommendations.js';
 import { BookExplorerPage } from './pages/book-explorer.js';
 import { UserGraphPage } from './pages/user-graph.js';
+import { CatalogExplorerPage } from './pages/catalog-explorer.js';
+import { CatalogGraphPage } from './pages/catalog-graph.js';
 
 // Setup routes
 const routes = [
   DashboardPage,
   UserRecommendationsPage,
   BookExplorerPage,
-  UserGraphPage
+  UserGraphPage,
+  CatalogExplorerPage,
+  CatalogGraphPage,
 ];
 
 // Initialize and start client-side router
