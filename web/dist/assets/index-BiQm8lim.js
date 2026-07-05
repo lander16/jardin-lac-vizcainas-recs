@@ -567,6 +567,13 @@
         <p>Explora el acervo real de la biblioteca y descubre cómo los libros se conectan a través de sus autoridades catalogadas en Koha.</p>
       </section>
 
+      <div class="glass-card" style="padding:0.75rem 1rem; background:rgba(86,105,122,0.06); border:1px solid var(--border-light); margin-bottom:2rem; display:flex; align-items:center; gap:0.75rem; border-radius:0.25rem;">
+        <i class="fa-solid fa-circle-info" style="color:var(--color-slate); font-size:1.15rem; flex-shrink:0;"></i>
+        <p style="font-size:0.8rem; color:var(--text-secondary); margin:0; line-height:1.4;">
+          <strong>Nota de Desempeño:</strong> Por motivos de rendimiento del servidor y velocidad de carga, las interconexiones en esta sección solo muestran conexiones de libros en Koha que comparten un <strong>mínimo de 3 autoridades</strong>.
+        </p>
+      </div>
+
       <div class="stats-grid" style="margin-bottom:2rem;">
         <div class="glass-card stat-card">
           <div class="stat-icon users" style="background:rgba(124,25,51,0.08);">
@@ -750,6 +757,13 @@
         <a href="#/catalog" style="color:var(--text-secondary); text-decoration:none; font-size:0.85rem;">
           <i class="fa-solid fa-arrow-left"></i> Volver al Catálogo
         </a>
+      </div>
+
+      <div class="glass-card" style="padding:0.75rem 1rem; background:rgba(86,105,122,0.06); border:1px solid var(--border-light); margin-bottom:1.5rem; display:flex; align-items:center; gap:0.75rem; border-radius:0.25rem;">
+        <i class="fa-solid fa-circle-info" style="color:var(--color-slate); font-size:1.15rem; flex-shrink:0;"></i>
+        <p style="font-size:0.8rem; color:var(--text-secondary); margin:0; line-height:1.4;">
+          <strong>Nota de Desempeño:</strong> Por motivos de rendimiento del servidor y velocidad de carga, esta gráfica solo muestra conexiones de libros en Koha que comparten un <strong>mínimo de 3 autoridades</strong>.
+        </p>
       </div>
 
       <div class="glass-card" style="margin-bottom:1.5rem;">

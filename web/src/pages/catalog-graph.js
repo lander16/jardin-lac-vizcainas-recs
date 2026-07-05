@@ -55,6 +55,13 @@ export const CatalogGraphPage = {
         </a>
       </div>
 
+      <div class="glass-card" style="padding:0.75rem 1rem; background:rgba(86,105,122,0.06); border:1px solid var(--border-light); margin-bottom:1.5rem; display:flex; align-items:center; gap:0.75rem; border-radius:0.25rem;">
+        <i class="fa-solid fa-circle-info" style="color:var(--color-slate); font-size:1.15rem; flex-shrink:0;"></i>
+        <p style="font-size:0.8rem; color:var(--text-secondary); margin:0; line-height:1.4;">
+          <strong>Nota de Desempeño:</strong> Por motivos de rendimiento del servidor y velocidad de carga, esta gráfica solo muestra conexiones de libros en Koha que comparten un <strong>mínimo de 3 autoridades</strong>.
+        </p>
+      </div>
+
       <div class="glass-card" style="margin-bottom:1.5rem;">
         <h2 style="font-family:var(--font-display); font-size:1.6rem; font-weight:700; margin-bottom:0.35rem; line-height:1.2;">
           ${bookDetail.title}
