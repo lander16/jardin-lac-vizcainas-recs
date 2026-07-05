@@ -1218,7 +1218,7 @@ svg text {
   gap: 1.5rem;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   .stats-insights-grid {
     grid-template-columns: 1fr;
   }
