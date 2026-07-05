@@ -76,7 +76,7 @@ export const CatalogGraphPage = {
       <div class="graph-split">
         <div>
           <div id="catalog-graph-container" class="glass-card" style="padding:0; overflow:hidden;">
-            <div id="catalog-graph" style="width:100%; height:600px; position:relative;">
+            <div id="catalog-graph" style="width:100%; height:680px; position:relative;">
             </div>
             <div class="graph-tooltip" id="catalog-tooltip"></div>
             <div class="graph-legend">
@@ -114,7 +114,7 @@ export const CatalogGraphPage = {
     if (!container || !graph.nodes.length) return;
 
     const width = container.clientWidth;
-    const height = 600;
+    const height = 680;
 
     const svg = d3.select(container)
       .append('svg')
