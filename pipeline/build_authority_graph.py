@@ -82,8 +82,8 @@ def main():
     for w in sorted(weight_dist.keys()):
         print(f"    {w} shared authorities: {weight_dist[w]} pairs")
 
-    # Filter to weight >= 2 (meaningful connections only)
-    MIN_WEIGHT = 2
+    # Filter to weight >= 3 (meaningful connections only)
+    MIN_WEIGHT = 3
     strong_connections = {k: v for k, v in connections.items() if v["weight"] >= MIN_WEIGHT}
     print(f"  ✓ Keeping {len(strong_connections)} connections with weight ≥ {MIN_WEIGHT}.")
 
