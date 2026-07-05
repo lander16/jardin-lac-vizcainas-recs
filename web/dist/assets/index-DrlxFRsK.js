@@ -671,7 +671,7 @@
             <h4 style="font-size:0.9rem; font-weight:700; margin-bottom:0.75rem; color:var(--text-secondary);">
               <i class="fa-solid fa-ghost" style="color:var(--text-muted);"></i> Libros sin Conexión (Muestra de 100 Huérfanos)
             </h4>
-            <div class="inspector-scroll-list" style="max-height: 250px; background:var(--bg-secondary); border-radius:0.25rem; border:1px solid var(--border-light); padding:0.5rem;">
+            <div class="inspector-scroll-list" style="max-height: 280px; background:var(--bg-secondary); border-radius:0.25rem; border:1px solid var(--border-light); padding:0.5rem; box-sizing:border-box;">
               ${t.sample_orphaned_books&&t.sample_orphaned_books.length>0?t.sample_orphaned_books.map(e=>`
                 <a href="#/catalog/graph/${e.biblio_id}" class="inspector-book-item" style="padding:0.4rem 0.5rem; display:flex; justify-content:space-between; align-items:center; text-decoration:none; color:var(--text-primary);">
                   <div style="display:flex; align-items:center; gap:0.45rem; min-width:0; flex:1;">
@@ -688,7 +688,7 @@
             <h4 style="font-size:0.9rem; font-weight:700; margin-bottom:0.75rem; color:var(--text-secondary);">
               <i class="fa-solid fa-crown" style="color:var(--color-gold);"></i> Obras más Conectadas del Catálogo (Top 100)
             </h4>
-            <div class="inspector-scroll-list" style="max-height: 700px; background:var(--bg-secondary); border-radius:0.25rem; border:1px solid var(--border-light); padding:0.5rem;">
+            <div class="inspector-scroll-list" style="max-height: 520px; background:var(--bg-secondary); border-radius:0.25rem; border:1px solid var(--border-light); padding:0.5rem; box-sizing:border-box;">
               ${t.most_connected_books&&t.most_connected_books.length>0?t.most_connected_books.map(e=>`
                 <a href="#/catalog/graph/${e.biblio_id}" class="inspector-book-item" style="padding:0.4rem 0.5rem; display:flex; align-items:center; justify-content:space-between; text-decoration:none; color:var(--text-primary);">
                   <div style="display:flex; align-items:center; gap:0.45rem; min-width:0; flex:1;">

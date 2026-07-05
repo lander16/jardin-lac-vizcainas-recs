@@ -994,6 +994,9 @@ svg text {
   overflow-y: auto;
   padding-right: 0.25rem;
   margin-bottom: 1rem;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .inspector-book-item {
@@ -1008,6 +1011,8 @@ svg text {
   text-decoration: none;
   color: var(--text-primary);
   transition: all 0.2s ease;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .inspector-book-item:hover {
