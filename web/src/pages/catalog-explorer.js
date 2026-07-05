@@ -131,25 +131,66 @@ export const CatalogExplorerPage = {
                 <span class="insight-value" style="color:var(--color-accent);">${stats.orphaned_books_count || 0}</span>
               </div>
             </div>
+
+            <h4 style="font-size:0.9rem; font-weight:700; margin-bottom:0.75rem; color:var(--text-secondary);">
+              <i class="fa-solid fa-chart-pie" style="color:var(--color-accent);"></i> Densidad y Cobertura
+            </h4>
+            <div style="display:flex; flex-direction:column; gap:0.5rem; font-size:0.82rem; margin-bottom:1.5rem; background:var(--bg-secondary); padding:0.75rem; border-radius:0.25rem; border:1px solid var(--border-light);">
+              <div style="display:flex; justify-content:space-between;">
+                <span style="color:var(--text-secondary);">Cobertura del grafo:</span>
+                <strong style="color:var(--color-collab);">${stats.percentage_connected_catalog || 0}% conectado</strong>
+              </div>
+              <div style="display:flex; justify-content:space-between;">
+                <span style="color:var(--text-secondary);">Vínculos MARC en Koha:</span>
+                <strong>${(stats.total_authority_links || 0).toLocaleString()} vínculos</strong>
+              </div>
+              <div style="display:flex; justify-content:space-between;">
+                <span style="color:var(--text-secondary);">Autoridades promedio por libro:</span>
+                <strong>${stats.avg_authorities_per_book || 0}</strong>
+              </div>
+            </div>
+
+            <h4 style="font-size:0.9rem; font-weight:700; margin-bottom:0.75rem; color:var(--text-secondary);">
+              <i class="fa-solid fa-chart-simple" style="color:var(--color-accent);"></i> Afinidad de Conexión (Autoridades compartidas)
+            </h4>
+            <div style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-bottom:1.5rem;">
+              <span class="catalog-type-chip" style="font-size:0.75rem; padding:0.35rem 0.6rem; background:var(--bg-secondary); border:1px solid var(--border-light);">
+                <strong>Comparten 3:</strong>&nbsp;<span style="color:var(--color-accent); font-weight:700;">${((stats.weight_distribution && stats.weight_distribution[3]) || 0).toLocaleString()}</span>
+              </span>
+              <span class="catalog-type-chip" style="font-size:0.75rem; padding:0.35rem 0.6rem; background:var(--bg-secondary); border:1px solid var(--border-light);">
+                <strong>Comparten 4:</strong>&nbsp;<span style="color:var(--color-collab); font-weight:700;">${((stats.weight_distribution && stats.weight_distribution[4]) || 0).toLocaleString()}</span>
+              </span>
+              <span class="catalog-type-chip" style="font-size:0.75rem; padding:0.35rem 0.6rem; background:var(--bg-secondary); border:1px solid var(--border-light);">
+                <strong>Comparten &ge; 5:</strong>&nbsp;<span style="color:var(--color-gold); font-weight:700;">${
+                  Object.entries(stats.weight_distribution || {})
+                    .filter(([w]) => parseInt(w) >= 5)
+                    .reduce((sum, [_, count]) => sum + count, 0)
+                    .toLocaleString()
+                }</span>
+              </span>
+            </div>
             
             <h4 style="font-size:0.9rem; font-weight:700; margin-bottom:0.75rem; color:var(--text-secondary);">
-              <i class="fa-solid fa-ghost" style="color:var(--text-muted);"></i> Libros sin Conexión (Huérfanos)
+              <i class="fa-solid fa-ghost" style="color:var(--text-muted);"></i> Libros sin Conexión (Muestra de 100 Huérfanos)
             </h4>
-            <div class="inspector-scroll-list" style="max-height: 150px; background:var(--bg-secondary); border-radius:0.25rem; border:1px solid var(--border-light); padding:0.5rem;">
+            <div class="inspector-scroll-list" style="max-height: 250px; background:var(--bg-secondary); border-radius:0.25rem; border:1px solid var(--border-light); padding:0.5rem;">
               ${(stats.sample_orphaned_books && stats.sample_orphaned_books.length > 0) ? stats.sample_orphaned_books.map(b => `
-                <div class="inspector-book-item" style="cursor:default; pointer-events:none; padding:0.35rem 0.5rem; display:flex; justify-content:space-between; align-items:center;">
-                  <span class="inspector-book-title" style="font-size:0.8rem; font-weight:600; text-overflow:ellipsis; overflow:hidden; white-space:nowrap; max-width:240px;">${b.title}</span>
-                  ${b.author ? `<span style="font-size:0.7rem; color:var(--text-muted);">${b.author}</span>` : ''}
-                </div>
+                <a href="#/catalog/graph/${b.biblio_id}" class="inspector-book-item" style="padding:0.4rem 0.5rem; display:flex; justify-content:space-between; align-items:center; text-decoration:none; color:var(--text-primary);">
+                  <div style="display:flex; align-items:center; gap:0.45rem; min-width:0; flex:1;">
+                    <i class="fa-solid fa-book-open" style="color:var(--text-muted); font-size:0.8rem; flex-shrink:0;"></i>
+                    <span class="inspector-book-title" style="font-size:0.8rem; font-weight:600; text-overflow:ellipsis; overflow:hidden; white-space:nowrap;">${b.title}</span>
+                  </div>
+                  ${b.author ? `<span style="font-size:0.7rem; color:var(--text-muted); flex-shrink:0; margin-left:0.5rem; text-overflow:ellipsis; overflow:hidden; white-space:nowrap; max-width:120px;">${b.author}</span>` : ''}
+                </a>
               `).join('') : '<div style="text-align:center; color:var(--text-muted); font-size:0.8rem; padding:1rem;">Ninguno detectado</div>'}
             </div>
           </div>
           
           <div class="insight-column">
             <h4 style="font-size:0.9rem; font-weight:700; margin-bottom:0.75rem; color:var(--text-secondary);">
-              <i class="fa-solid fa-crown" style="color:var(--color-gold);"></i> Obras más Conectadas del Catálogo
+              <i class="fa-solid fa-crown" style="color:var(--color-gold);"></i> Obras más Conectadas del Catálogo (Top 100)
             </h4>
-            <div class="inspector-scroll-list" style="max-height: 250px; background:var(--bg-secondary); border-radius:0.25rem; border:1px solid var(--border-light); padding:0.5rem;">
+            <div class="inspector-scroll-list" style="max-height: 700px; background:var(--bg-secondary); border-radius:0.25rem; border:1px solid var(--border-light); padding:0.5rem;">
               ${(stats.most_connected_books && stats.most_connected_books.length > 0) ? stats.most_connected_books.map(b => `
                 <a href="#/catalog/graph/${b.biblio_id}" class="inspector-book-item" style="padding:0.4rem 0.5rem; display:flex; align-items:center; justify-content:space-between; text-decoration:none; color:var(--text-primary);">
                   <div style="display:flex; align-items:center; gap:0.45rem; min-width:0; flex:1;">

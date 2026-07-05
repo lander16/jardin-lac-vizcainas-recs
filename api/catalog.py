@@ -105,13 +105,28 @@ class CatalogEngine:
         total_conns_sum = sum(len(conns) for conns in self.book_connections.values())
         avg_conns = total_conns_sum / len(self.books) if self.books else 0
 
-        # Update stats dict
+        # Calculate new metrics
+        total_authority_links = sum(len(b["authorities"]) for b in self.books.values())
+        avg_auths_per_book = round(total_authority_links / len(self.books), 2) if self.books else 0
+        pct_connected = round(((len(self.books) - len(orphaned_books)) / len(self.books)) * 100, 2) if self.books else 0
+
+        # Connection weight distribution
+        weight_dist = defaultdict(int)
+        for conn in self.connections:
+            w = conn["weight"]
+            weight_dist[w] += 1
+
+        # Update stats dict with 100 elements for list slices
         self.stats.update({
             "orphaned_books_count": len(orphaned_books),
-            "sample_orphaned_books": orphaned_books[:10],
-            "most_connected_books": most_connected[:10],
+            "sample_orphaned_books": orphaned_books[:100],  # Increased to 100
+            "most_connected_books": most_connected[:100],    # Increased to 100
             "avg_connections_per_book": round(avg_conns, 2),
-            "top_authorities_stats": self.top_authorities,
+            "total_authority_links": total_authority_links,
+            "avg_authorities_per_book": avg_auths_per_book,
+            "percentage_connected_catalog": pct_connected,
+            "weight_distribution": dict(weight_dist),
+            "top_authorities_stats": self.top_authorities[:10],
         })
 
         print(f"CatalogEngine loaded: {len(self.books)} books, {len(self.authorities)} authorities, {len(self.connections)} connections")
