@@ -613,6 +613,60 @@
         </div>
       </div>
 
+      <!-- Advanced statistics panel -->
+      <div class="glass-card" style="margin-bottom:2rem;">
+        <h3 style="font-family:var(--font-display); font-size:1.15rem; font-weight:700; margin-bottom:1.25rem;">
+          <i class="fa-solid fa-square-poll-vertical" style="color:var(--color-accent);"></i> Análisis de Interconexión en el Grafo
+        </h3>
+        
+        <div class="stats-insights-grid">
+          <div class="insight-column">
+            <h4 style="font-size:0.9rem; font-weight:700; margin-bottom:0.75rem; color:var(--text-secondary);">
+              <i class="fa-solid fa-circle-nodes" style="color:var(--color-accent);"></i> Métricas de Red
+            </h4>
+            <div style="display:flex; flex-direction:column; gap:0.75rem; margin-bottom:1.5rem;">
+              <div class="insight-stat-item">
+                <span class="insight-label">Promedio de conexiones por libro:</span>
+                <span class="insight-value">${t.avg_connections_per_book||0}</span>
+              </div>
+              <div class="insight-stat-item">
+                <span class="insight-label">Libros huérfanos (sin conexiones fuertes):</span>
+                <span class="insight-value" style="color:var(--color-accent);">${t.orphaned_books_count||0}</span>
+              </div>
+            </div>
+            
+            <h4 style="font-size:0.9rem; font-weight:700; margin-bottom:0.75rem; color:var(--text-secondary);">
+              <i class="fa-solid fa-ghost" style="color:var(--text-muted);"></i> Libros sin Conexión (Huérfanos)
+            </h4>
+            <div class="inspector-scroll-list" style="max-height: 150px; background:var(--bg-secondary); border-radius:0.25rem; border:1px solid var(--border-light); padding:0.5rem;">
+              ${t.sample_orphaned_books&&t.sample_orphaned_books.length>0?t.sample_orphaned_books.map(e=>`
+                <div class="inspector-book-item" style="cursor:default; pointer-events:none; padding:0.35rem 0.5rem; display:flex; justify-content:space-between; align-items:center;">
+                  <span class="inspector-book-title" style="font-size:0.8rem; font-weight:600; text-overflow:ellipsis; overflow:hidden; white-space:nowrap; max-width:240px;">${e.title}</span>
+                  ${e.author?`<span style="font-size:0.7rem; color:var(--text-muted);">${e.author}</span>`:``}
+                </div>
+              `).join(``):`<div style="text-align:center; color:var(--text-muted); font-size:0.8rem; padding:1rem;">Ninguno detectado</div>`}
+            </div>
+          </div>
+          
+          <div class="insight-column">
+            <h4 style="font-size:0.9rem; font-weight:700; margin-bottom:0.75rem; color:var(--text-secondary);">
+              <i class="fa-solid fa-crown" style="color:var(--color-gold);"></i> Obras más Conectadas del Catálogo
+            </h4>
+            <div class="inspector-scroll-list" style="max-height: 250px; background:var(--bg-secondary); border-radius:0.25rem; border:1px solid var(--border-light); padding:0.5rem;">
+              ${t.most_connected_books&&t.most_connected_books.length>0?t.most_connected_books.map(e=>`
+                <a href="#/catalog/graph/${e.biblio_id}" class="inspector-book-item" style="padding:0.4rem 0.5rem; display:flex; align-items:center; justify-content:space-between; text-decoration:none; color:var(--text-primary);">
+                  <div style="display:flex; align-items:center; gap:0.45rem; min-width:0; flex:1;">
+                    <i class="fa-solid fa-book" style="color:var(--color-accent); font-size:0.8rem; flex-shrink:0;"></i>
+                    <span class="inspector-book-title" style="font-size:0.8rem; font-weight:600; text-overflow:ellipsis; overflow:hidden; white-space:nowrap;">${e.title}</span>
+                  </div>
+                  <span class="similarity-badge" style="background:rgba(124, 25, 51, 0.08); color:var(--color-accent); border:1px solid rgba(124, 25, 51, 0.15); font-weight:700; padding:0.1rem 0.4rem; border-radius:0.2rem; font-size:0.72rem; flex-shrink:0; margin-left:0.5rem;" title="${e.connection_count} conexiones">${e.connection_count}</span>
+                </a>
+              `).join(``):`<div style="text-align:center; color:var(--text-muted); font-size:0.8rem; padding:1rem;">Cargando...</div>`}
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Search and books list -->
       <div class="glass-card">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem; flex-wrap:wrap; gap:0.75rem;">
