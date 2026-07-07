@@ -6,18 +6,40 @@ from collections import defaultdict
 from rapidfuzz import fuzz
 
 def normalize_text(text):
+    """
+    Normalize text by removing accents (diacritics), converting to lowercase, 
+    and returning a clean string for text matching.
+    """
     if not text:
         return ""
     normalized = unicodedata.normalize('NFD', text)
     return "".join(c for c in normalized if unicodedata.category(c) != 'Mn').lower()
 
 def clean_words(text):
+    """
+    Clean the target text by replacing all punctuation and symbols with spaces,
+    then split it into individual words. This prevents trailing punctuation (like commas 
+    or brackets) from interfering with word similarity calculations.
+    """
     if not text:
         return []
     cleaned = re.sub(r'[^\w\s]', ' ', text)
     return cleaned.split()
 
 def calculate_word_match_score(query_words, target_text):
+    """
+    Calculate a word-level token averaging similarity score between a list of query words
+    and a target text string. 
+    
+    For each word in the query:
+      1. We find its best matching counterpart among all words in the target text.
+      2. If the query word is a prefix of a target word (and length >= 4), we assign a high score
+         (100.0) penalized slightly by the length difference to avoid overly generic matches.
+      3. Otherwise, we fall back to standard Levenshtein ratio (fuzz.ratio).
+    
+    The final score is the mathematical average of the best matches for each query word.
+    This effectively eliminates false positives from multi-term queries where one word is a complete miss.
+    """
     if not target_text:
         return 0.0
     target_words = clean_words(target_text)
@@ -28,7 +50,9 @@ def calculate_word_match_score(query_words, target_text):
     for qw in query_words:
         best_word_score = 0.0
         for tw in target_words:
+            # Check if query word is a prefix of target word
             if tw.startswith(qw) and len(qw) >= 4:
+                # Apply length penalty: -5 points for every character difference
                 score = 100.0 - (len(tw) - len(qw)) * 5
             else:
                 score = fuzz.ratio(qw, tw)
@@ -233,7 +257,12 @@ class CatalogEngine:
                         best_auth_name = auth["name"]
                         best_auth_type = auth["type"]
                 
-                # Apply weights to prioritize title/author over authorities
+                # Apply weights to prioritize direct title/author queries over secondary metadata (authorities):
+                # - Author matches are slightly boosted (1.1) to promote direct searches for author names.
+                # - Title matches remain at standard scale (1.0).
+                # - Authority matches (like Subjects or Places) are attenuated (0.7) to prevent weak/partial 
+                #   concept matches from polluting direct author/title queries, while still allowing them to
+                #   bubble up if the search is highly specific (e.g. searching "Feminismos").
                 weighted_t = t_score * 1.0
                 weighted_a = a_score * 1.1
                 weighted_auth = best_auth_score * 0.7
