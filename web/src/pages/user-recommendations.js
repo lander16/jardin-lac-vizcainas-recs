@@ -309,7 +309,7 @@ export const UserRecommendationsPage = {
               if (auth.type === 'Autor') { badgeColor = '#7c1933'; }
               else if (auth.type === 'Tema') { badgeColor = '#52755e'; }
               else if (auth.type === 'Lugar') { badgeColor = '#56697a'; }
-              else if (auth.type === 'Corporativo') { badgeColor = '#b38f4d'; }
+              else if (auth.type === 'Institución / Organización' || auth.type === 'Corporativo') { badgeColor = '#b38f4d'; }
               else { badgeColor = '#7d4f9b'; }
               
               return `<span class="tag" style="background:${badgeColor}15; color:${badgeColor}; border:1px solid ${badgeColor}30; padding:0.1rem 0.35rem; border-radius:3px; font-size:0.75rem; font-weight:600; margin-right:0.25rem; white-space:nowrap; display:inline-block; margin-top:0.25rem;">${auth.name} (${typeLabel})</span>`;

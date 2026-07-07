@@ -6,9 +6,9 @@ const AUTH_NODE_COLORS = {
   'Autor':             '#7c1933',
   'Tema':              '#52755e',
   'Tema (Persona)':    '#52755e',
-  'Tema (Corporativo)':'#52755e',
+  'Tema (Institución)':'#52755e',
   'Lugar':             '#56697a',
-  'Corporativo':       '#b38f4d',
+  'Institución / Organización': '#b38f4d',
   'Título Uniforme':   '#805a96',
 };
 
@@ -16,9 +16,9 @@ const AUTH_TYPE_ICONS = {
   'Autor':            'fa-solid fa-feather',
   'Tema':             'fa-solid fa-tags',
   'Tema (Persona)':   'fa-solid fa-user-tag',
-  'Tema (Corporativo)': 'fa-solid fa-building-flag',
+  'Tema (Institución)': 'fa-solid fa-building-flag',
   'Lugar':            'fa-solid fa-map-pin',
-  'Corporativo':      'fa-solid fa-building',
+  'Institución / Organización': 'fa-solid fa-building',
   'Título Uniforme':  'fa-solid fa-bookmark',
 };
 
@@ -86,7 +86,7 @@ export const CatalogGraphPage = {
               <div class="legend-item"><div class="legend-dot" style="background:#7c1933; opacity:0.6;"></div> Autor</div>
               <div class="legend-item"><div class="legend-dot" style="background:#52755e;"></div> Tema</div>
               <div class="legend-item"><div class="legend-dot" style="background:#56697a; opacity:0.6;"></div> Lugar</div>
-              <div class="legend-item"><div class="legend-dot" style="background:#b38f4d;"></div> Corporativo</div>
+              <div class="legend-item"><div class="legend-dot" style="background:#b38f4d;"></div> Institución / Organización</div>
               <div class="legend-item"><div class="legend-dot" style="background:#805a96;"></div> Título Uniforme</div>
             </div>
           </div>

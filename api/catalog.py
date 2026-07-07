@@ -1,11 +1,43 @@
-"""
-Catalog engine for serving Koha authority-based book data.
-Loads precomputed data from data/koha/authority_graph.json.
-"""
-
 import json
 import os
+import unicodedata
+import re
 from collections import defaultdict
+from rapidfuzz import fuzz
+
+def normalize_text(text):
+    if not text:
+        return ""
+    normalized = unicodedata.normalize('NFD', text)
+    return "".join(c for c in normalized if unicodedata.category(c) != 'Mn').lower()
+
+def clean_words(text):
+    if not text:
+        return []
+    cleaned = re.sub(r'[^\w\s]', ' ', text)
+    return cleaned.split()
+
+def calculate_word_match_score(query_words, target_text):
+    if not target_text:
+        return 0.0
+    target_words = clean_words(target_text)
+    if not target_words:
+        return 0.0
+    
+    total_score = 0.0
+    for qw in query_words:
+        best_word_score = 0.0
+        for tw in target_words:
+            if tw.startswith(qw) and len(qw) >= 4:
+                score = 100.0 - (len(tw) - len(qw)) * 5
+            else:
+                score = fuzz.ratio(qw, tw)
+            
+            if score > best_word_score:
+                best_word_score = score
+        total_score += best_word_score
+        
+    return total_score / len(query_words)
 
 
 class CatalogEngine:
@@ -35,16 +67,56 @@ class CatalogEngine:
         with open(self.graph_path, "r", encoding="utf-8") as f:
             data = json.load(f)
 
+        def translate_type(t):
+            if t == "Corporativo":
+                return "Institución / Organización"
+            if t == "Tema (Corporativo)":
+                return "Tema (Institución)"
+            return t
+
         self.books = data.get("books", {})
+        for bid, book in self.books.items():
+            for auth in book.get("authorities", []):
+                auth["type"] = translate_type(auth.get("type", ""))
+
         self.authorities = data.get("authorities", [])
+        for auth in self.authorities:
+            auth["type"] = translate_type(auth.get("type", ""))
+
         self.connections = data.get("connections", [])
+
         self.top_authorities = data.get("top_authorities", [])
+        for auth in self.top_authorities:
+            auth["type"] = translate_type(auth.get("type", ""))
+
         self.stats = data.get("stats", {})
+        if "type_counts" in self.stats:
+            new_counts = {}
+            for t, count in self.stats["type_counts"].items():
+                new_counts[translate_type(t)] = count
+            self.stats["type_counts"] = new_counts
 
         # Build authority index
         for auth in self.authorities:
             self.auth_index[auth["authority_id"]] = auth
             self.auth_to_books[auth["authority_id"]] = auth.get("biblio_ids", [])
+
+        # Build search index for rapidfuzz matching
+        self.search_index = []
+        for bid, book in self.books.items():
+            norm_auths = []
+            for auth in book.get("authorities", []):
+                norm_auths.append({
+                    "name": auth["name"],
+                    "norm_name": normalize_text(auth["name"]),
+                    "type": auth["type"]
+                })
+            self.search_index.append({
+                "biblio_id": bid,
+                "norm_title": normalize_text(book.get("title", "")),
+                "norm_author": normalize_text(book.get("author", "")),
+                "authorities": norm_auths
+            })
 
         # Build book connections index
         self.book_connections = defaultdict(list)
@@ -136,31 +208,79 @@ class CatalogEngine:
         return self.stats
 
     def get_books_list(self, query=None, limit=100):
-        """Return a list of books, optionally filtered by search query."""
+        """Return a list of books, optionally filtered and ranked by fuzzy search query."""
         results = []
-        for bid, book in self.books.items():
-            if query:
-                q = query.lower()
-                if q not in book["title"].lower() and q not in book["author"].lower():
-                    # Also search in authority names
-                    auth_match = any(q in a["name"].lower() for a in book["authorities"])
-                    if not auth_match:
-                        continue
-
-            # Count connections for this book
-            conn_count = len(self.book_connections.get(bid, []))
-
-            results.append({
-                "biblio_id": bid,
-                "title": book["title"],
-                "author": book["author"],
-                "authority_count": len(book["authorities"]),
-                "connection_count": conn_count,
-                "authorities": book["authorities"],
-            })
-
-        # Sort by connection count descending (most connected first)
-        results.sort(key=lambda x: (-x["connection_count"], x["title"]))
+        
+        if query:
+            norm_query = normalize_text(query)
+            q_words = norm_query.split()
+            for item in self.search_index:
+                bid = item["biblio_id"]
+                book = self.books.get(bid)
+                if not book:
+                    continue
+                
+                t_score = calculate_word_match_score(q_words, item["norm_title"])
+                a_score = calculate_word_match_score(q_words, item["norm_author"]) if item["norm_author"] else 0
+                
+                best_auth_score = 0
+                best_auth_name = ""
+                best_auth_type = ""
+                for auth in item["authorities"]:
+                    auth_score = calculate_word_match_score(q_words, auth["norm_name"])
+                    if auth_score > best_auth_score:
+                        best_auth_score = auth_score
+                        best_auth_name = auth["name"]
+                        best_auth_type = auth["type"]
+                
+                # Apply weights to prioritize title/author over authorities
+                weighted_t = t_score * 1.0
+                weighted_a = a_score * 1.1
+                weighted_auth = best_auth_score * 0.7
+                
+                # Calculate final ranking score
+                max_score = max(weighted_t, weighted_a, weighted_auth)
+                
+                # Filter out low-matching results to maintain relevance
+                if max_score >= 55:
+                    # Determine match explanation
+                    if max_score == weighted_t:
+                        explanation = f"Coincidencia en título: '{book['title']}'"
+                    elif max_score == weighted_a:
+                        explanation = f"Coincidencia en autor: '{book['author']}'"
+                    else:
+                        explanation = f"Coincidencia en {best_auth_type.lower()}: '{best_auth_name}'"
+                    
+                    conn_count = len(self.book_connections.get(bid, []))
+                    
+                    results.append({
+                        "biblio_id": bid,
+                        "title": book["title"],
+                        "author": book["author"],
+                        "authority_count": len(book["authorities"]),
+                        "connection_count": conn_count,
+                        "authorities": book["authorities"],
+                        "match_score": round(min(max_score, 100.0), 1),
+                        "match_explanation": explanation
+                    })
+            
+            # Sort: highest match score first, connection count desc as tie-breaker
+            results.sort(key=lambda x: (-x["match_score"], -x["connection_count"], x["title"]))
+        
+        else:
+            # Standard listing: sort by connection count desc
+            for bid, book in self.books.items():
+                conn_count = len(self.book_connections.get(bid, []))
+                results.append({
+                    "biblio_id": bid,
+                    "title": book["title"],
+                    "author": book["author"],
+                    "authority_count": len(book["authorities"]),
+                    "connection_count": conn_count,
+                    "authorities": book["authorities"],
+                })
+            results.sort(key=lambda x: (-x["connection_count"], x["title"]))
+            
         return results[:limit]
 
     def get_book_detail(self, biblio_id):

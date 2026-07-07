@@ -359,7 +359,7 @@
           <div class="explanation-title auth">
             <i class="fa-solid fa-bookmark"></i> Conexión por autoridades Koha
           </div>
-          ${e.auth_details.map(e=>{let t=e.shared_authorities.map(e=>{let t=e.type,n=``;return n=e.type===`Autor`?`#7c1933`:e.type===`Tema`?`#52755e`:e.type===`Lugar`?`#56697a`:e.type===`Corporativo`?`#b38f4d`:`#7d4f9b`,`<span class="tag" style="background:${n}15; color:${n}; border:1px solid ${n}30; padding:0.1rem 0.35rem; border-radius:3px; font-size:0.75rem; font-weight:600; margin-right:0.25rem; white-space:nowrap; display:inline-block; margin-top:0.25rem;">${e.name} (${t})</span>`}).join(` `);return`
+          ${e.auth_details.map(e=>{let t=e.shared_authorities.map(e=>{let t=e.type,n=``;return n=e.type===`Autor`?`#7c1933`:e.type===`Tema`?`#52755e`:e.type===`Lugar`?`#56697a`:e.type===`Institución / Organización`||e.type===`Corporativo`?`#b38f4d`:`#7d4f9b`,`<span class="tag" style="background:${n}15; color:${n}; border:1px solid ${n}30; padding:0.1rem 0.35rem; border-radius:3px; font-size:0.75rem; font-weight:600; margin-right:0.25rem; white-space:nowrap; display:inline-block; margin-top:0.25rem;">${e.name} (${t})</span>`}).join(` `);return`
               <div class="explanation-row" style="flex-direction:column; align-items:flex-start; gap:0.25rem; margin-bottom:0.75rem;">
                 <div style="font-size:0.8rem;">
                   Conectado con: <strong>${e.related_title}</strong>
@@ -593,7 +593,7 @@
                 Explorar Títulos Similares
               </a>
             </div>
-          `}}catch(e){m.innerHTML=`<div style="text-align:center; padding:2rem; color:var(--color-accent);">Error al cargar detalle: ${e.message}</div>`}}),c.on(`tick`,()=>{u.attr(`x1`,e=>e.source.x).attr(`y1`,e=>e.source.y).attr(`x2`,e=>e.target.x).attr(`y2`,e=>e.target.y),d.attr(`cx`,e=>e.x).attr(`cy`,e=>e.y),f.attr(`x`,e=>e.x).attr(`y`,e=>e.y)});function h(e,t){e.active||c.alphaTarget(.3).restart(),t.fx=t.x,t.fy=t.y}function g(e,t){t.fx=e.x,t.fy=e.y}function _(e,t){e.active||c.alphaTarget(0),t.fx=null,t.fy=null}}},ja={Autor:{bg:`rgba(124, 25, 51, 0.08)`,border:`rgba(124, 25, 51, 0.25)`,text:`#7c1933`},Tema:{bg:`rgba(82, 117, 94, 0.08)`,border:`rgba(82, 117, 94, 0.25)`,text:`#52755e`},"Tema (Persona)":{bg:`rgba(82, 117, 94, 0.08)`,border:`rgba(82, 117, 94, 0.25)`,text:`#52755e`},"Tema (Corporativo)":{bg:`rgba(82, 117, 94, 0.08)`,border:`rgba(82, 117, 94, 0.25)`,text:`#52755e`},Lugar:{bg:`rgba(86, 105, 122, 0.08)`,border:`rgba(86, 105, 122, 0.25)`,text:`#56697a`},Corporativo:{bg:`rgba(179, 143, 77, 0.08)`,border:`rgba(179, 143, 77, 0.25)`,text:`#b38f4d`},"Título Uniforme":{bg:`rgba(128, 90, 150, 0.08)`,border:`rgba(128, 90, 150, 0.25)`,text:`#805a96`}},Ma={Autor:`fa-solid fa-feather`,Tema:`fa-solid fa-tags`,"Tema (Persona)":`fa-solid fa-user-tag`,"Tema (Corporativo)":`fa-solid fa-building-flag`,Lugar:`fa-solid fa-map-pin`,Corporativo:`fa-solid fa-building`,"Título Uniforme":`fa-solid fa-bookmark`};function Na(e){return ja[e]||ja.Tema}function Pa(e){return Ma[e]||`fa-solid fa-tag`}function Fa(e){let t=Na(e.type),n=Pa(e.type);return`
+          `}}catch(e){m.innerHTML=`<div style="text-align:center; padding:2rem; color:var(--color-accent);">Error al cargar detalle: ${e.message}</div>`}}),c.on(`tick`,()=>{u.attr(`x1`,e=>e.source.x).attr(`y1`,e=>e.source.y).attr(`x2`,e=>e.target.x).attr(`y2`,e=>e.target.y),d.attr(`cx`,e=>e.x).attr(`cy`,e=>e.y),f.attr(`x`,e=>e.x).attr(`y`,e=>e.y)});function h(e,t){e.active||c.alphaTarget(.3).restart(),t.fx=t.x,t.fy=t.y}function g(e,t){t.fx=e.x,t.fy=e.y}function _(e,t){e.active||c.alphaTarget(0),t.fx=null,t.fy=null}}},ja={Autor:{bg:`rgba(124, 25, 51, 0.08)`,border:`rgba(124, 25, 51, 0.25)`,text:`#7c1933`},Tema:{bg:`rgba(82, 117, 94, 0.08)`,border:`rgba(82, 117, 94, 0.25)`,text:`#52755e`},"Tema (Persona)":{bg:`rgba(82, 117, 94, 0.08)`,border:`rgba(82, 117, 94, 0.25)`,text:`#52755e`},"Tema (Institución)":{bg:`rgba(82, 117, 94, 0.08)`,border:`rgba(82, 117, 94, 0.25)`,text:`#52755e`},Lugar:{bg:`rgba(86, 105, 122, 0.08)`,border:`rgba(86, 105, 122, 0.25)`,text:`#56697a`},"Institución / Organización":{bg:`rgba(179, 143, 77, 0.08)`,border:`rgba(179, 143, 77, 0.25)`,text:`#b38f4d`},"Título Uniforme":{bg:`rgba(128, 90, 150, 0.08)`,border:`rgba(128, 90, 150, 0.25)`,text:`#805a96`}},Ma={Autor:`fa-solid fa-feather`,Tema:`fa-solid fa-tags`,"Tema (Persona)":`fa-solid fa-user-tag`,"Tema (Institución)":`fa-solid fa-building-flag`,Lugar:`fa-solid fa-map-pin`,"Institución / Organización":`fa-solid fa-building`,"Título Uniforme":`fa-solid fa-bookmark`};function Na(e){return ja[e]||ja.Tema}function Pa(e){return Ma[e]||`fa-solid fa-tag`}function Fa(e){let t=Na(e.type),n=Pa(e.type);return`
     <span class="catalog-auth-badge" style="background:${t.bg}; border-color:${t.border}; color:${t.text};" title="${e.type}: ${e.name}">
       <i class="${n}"></i> ${e.name}
     </span>
@@ -603,192 +603,162 @@
         <p>Explora el acervo real de la biblioteca y descubre cómo los libros se conectan a través de sus autoridades catalogadas en Koha.</p>
       </section>
 
-      <div class="glass-card" style="padding:0.75rem 1rem; background:rgba(86,105,122,0.06); border:1px solid var(--border-light); margin-bottom:2rem; display:flex; align-items:center; gap:0.75rem; border-radius:0.25rem;">
+      <!-- Prominent Search Console -->
+      <div class="glass-card" style="margin-bottom:2rem; padding:2rem; background:linear-gradient(135deg, rgba(124, 25, 51, 0.02) 0%, rgba(86, 105, 122, 0.05) 100%); border:1px solid var(--border-light); border-radius: 8px;">
+        <div style="max-width:650px; margin:0 auto; text-align:center;">
+          <h2 style="font-family:var(--font-display); font-size:1.5rem; font-weight:700; color:var(--text-primary); margin:0 0 0.5rem 0;">
+            <i class="fa-solid fa-magnifying-glass-chart" style="color:var(--color-accent);"></i> Búsqueda Inteligente del Catálogo
+          </h2>
+          <p style="color:var(--text-secondary); font-size:0.88rem; margin:0 0 1.5rem 0;">
+            Busca por título, autor o autoridades (temas, lugares, instituciones). Tolera errores ortográficos y ordena por relevancia.
+          </p>
+          <div style="position:relative; width:100%; display:flex; align-items:center;">
+            <i class="fa-solid fa-magnifying-glass" style="position:absolute; left:1.15rem; color:var(--color-accent); font-size:1.1rem; pointer-events:none;"></i>
+            <input type="text" id="catalog-search" placeholder="Escribe tu búsqueda (ej. 'garcia marquez', 'sor juana', 'historia')..." 
+                   class="search-input" 
+                   style="width:100%; padding:0.85rem 1rem 0.85rem 2.85rem; font-size:1.05rem; border-radius:24px; border:1px solid var(--border-light); background:var(--bg-primary); color:var(--text-primary); box-shadow:0 4px 20px rgba(0,0,0,0.02); transition:all 0.2s ease; outline:none;">
+          </div>
+        </div>
+      </div>
+
+      <!-- Informational Performance Banner -->
+      <div class="glass-card" style="padding:0.75rem 1rem; background:rgba(86,105,122,0.05); border:1px solid var(--border-light); margin-bottom:2rem; display:flex; align-items:center; gap:0.75rem; border-radius:0.25rem;">
         <i class="fa-solid fa-circle-info" style="color:var(--color-slate); font-size:1.15rem; flex-shrink:0;"></i>
         <p style="font-size:0.8rem; color:var(--text-secondary); margin:0; line-height:1.4;">
           <strong>Nota de Desempeño:</strong> Por motivos de rendimiento del servidor y velocidad de carga, las interconexiones en esta sección solo muestran conexiones de libros en Koha que comparten un <strong>mínimo de 3 autoridades</strong>.
         </p>
       </div>
 
-      <div class="stats-grid" style="margin-bottom:2rem;">
-        <div class="glass-card stat-card">
-          <div class="stat-icon users" style="background:rgba(124,25,51,0.08);">
-            <i class="fa-solid fa-book" style="color:var(--color-accent);"></i>
-          </div>
-          <div>
-            <div class="stat-number">${i.toLocaleString()}</div>
-            <div class="stat-label">Obras Catalogadas</div>
-          </div>
-        </div>
-        <div class="glass-card stat-card">
-          <div class="stat-icon books" style="background:rgba(82,117,94,0.08);">
-            <i class="fa-solid fa-tags" style="color:var(--color-collab);"></i>
-          </div>
-          <div>
-            <div class="stat-number">${a.toLocaleString()}</div>
-            <div class="stat-label">Autoridades</div>
-          </div>
-        </div>
-        <div class="glass-card stat-card">
-          <div class="stat-icon checkouts" style="background:rgba(179,143,77,0.08);">
-            <i class="fa-solid fa-diagram-project" style="color:var(--color-gold);"></i>
-          </div>
-          <div>
-            <div class="stat-number">${o.toLocaleString()}</div>
-            <div class="stat-label">Conexiones</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Authority type summary -->
-      <div class="glass-card" style="margin-bottom:2rem;">
-        <h3 style="font-family:var(--font-display); font-size:1.15rem; font-weight:700; margin-bottom:1rem;">
-          <i class="fa-solid fa-layer-group" style="color:var(--color-accent);"></i> Tipos de Autoridades
-        </h3>
-        <div class="catalog-type-grid">
-          ${Object.entries(s).sort((e,t)=>t[1]-e[1]).map(([e,t])=>{let n=Na(e),r=Pa(e);return`
-              <div class="catalog-type-chip" style="background:${n.bg}; border:1px solid ${n.border};">
-                <i class="${r}" style="color:${n.text};"></i>
-                <span style="font-weight:600; color:${n.text};">${e}</span>
-                <span class="catalog-type-count" style="color:${n.text};">${t}</span>
-              </div>
-            `}).join(``)}
-        </div>
-      </div>
-
-      <!-- Advanced statistics panel -->
-      <div class="glass-card" style="margin-bottom:2rem; overflow:hidden; width:100%; box-sizing:border-box;">
-        <h3 style="font-family:var(--font-display); font-size:1.15rem; font-weight:700; margin-bottom:1.25rem;">
-          <i class="fa-solid fa-square-poll-vertical" style="color:var(--color-accent);"></i> Análisis de Interconexión en el Grafo
-        </h3>
+      <!-- Main Columns Layout -->
+      <div class="search-layout-grid" style="display:grid; grid-template-columns: 1.55fr 1fr; gap:2rem; align-items: start;">
         
-        <div class="stats-insights-grid" style="width:100%; box-sizing:border-box; min-width:0;">
-          <div class="insight-column" style="min-width:0; width:100%; box-sizing:border-box; overflow:hidden;">
-            <h4 style="font-size:0.9rem; font-weight:700; margin-bottom:0.75rem; color:var(--text-secondary);">
-              <i class="fa-solid fa-circle-nodes" style="color:var(--color-accent);"></i> Métricas de Red
-            </h4>
-            <div style="display:flex; flex-direction:column; gap:0.75rem; margin-bottom:1.5rem; width:100%; box-sizing:border-box;">
-              <div class="insight-stat-item" style="width:100%; box-sizing:border-box;">
-                <span class="insight-label">Promedio de conexiones por libro:</span>
-                <span class="insight-value">${t.avg_connections_per_book||0}</span>
-              </div>
-              <div class="insight-stat-item" style="width:100%; box-sizing:border-box;">
-                <span class="insight-label">Libros huérfanos (sin conexiones fuertes):</span>
-                <span class="insight-value" style="color:var(--color-accent);">${t.orphaned_books_count||0}</span>
-              </div>
-            </div>
+        <!-- Left Column: Search Results Explorer -->
+        <div class="glass-card" style="padding:1.5rem;">
+          <h3 style="font-family:var(--font-display); font-size:1.2rem; font-weight:700; margin:0 0 1.25rem 0; display:flex; align-items:center; gap:0.5rem;">
+            <i class="fa-solid fa-building-columns" style="color:var(--color-accent);"></i> Resultados del Acervo
+          </h3>
+          <div id="catalog-books-list">
+            ${this.renderBooksList(n)}
+          </div>
+        </div>
 
-            <h4 style="font-size:0.9rem; font-weight:700; margin-bottom:0.75rem; color:var(--text-secondary);">
-              <i class="fa-solid fa-chart-pie" style="color:var(--color-accent);"></i> Densidad y Cobertura
-            </h4>
-            <div style="display:flex; flex-direction:column; gap:0.5rem; font-size:0.82rem; margin-bottom:1.5rem; background:var(--bg-secondary); padding:0.75rem; border-radius:0.25rem; border:1px solid var(--border-light); width:100%; box-sizing:border-box;">
-              <div style="display:flex; justify-content:space-between; width:100%;">
-                <span style="color:var(--text-secondary);">Cobertura del grafo:</span>
-                <strong style="color:var(--color-collab);">${t.percentage_connected_catalog||0}% conectado</strong>
+        <!-- Right Column: Stats and Insights -->
+        <div style="display:flex; flex-direction:column; gap:2rem;">
+          
+          <!-- Stats Summary Grid -->
+          <div style="display:grid; grid-template-columns:1fr; gap:1rem;">
+            <div class="glass-card stat-card" style="padding:1rem; display:flex; align-items:center; gap:0.75rem;">
+              <div class="stat-icon users" style="background:rgba(124,25,51,0.08); width:2.5rem; height:2.5rem; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                <i class="fa-solid fa-book" style="color:var(--color-accent); font-size:1.1rem;"></i>
               </div>
-              <div style="display:flex; justify-content:space-between; width:100%;">
-                <span style="color:var(--text-secondary);">Vínculos MARC en Koha:</span>
-                <strong>${(t.total_authority_links||0).toLocaleString()} vínculos</strong>
-              </div>
-              <div style="display:flex; justify-content:space-between; width:100%;">
-                <span style="color:var(--text-secondary);">Autoridades promedio por libro:</span>
-                <strong>${t.avg_authorities_per_book||0}</strong>
+              <div>
+                <div class="stat-number" style="font-size:1.25rem; font-weight:700;">${i.toLocaleString()}</div>
+                <div class="stat-label" style="font-size:0.75rem; color:var(--text-secondary);">Obras Catalogadas</div>
               </div>
             </div>
-
-            <h4 style="font-size:0.9rem; font-weight:700; margin-bottom:0.75rem; color:var(--text-secondary);">
-              <i class="fa-solid fa-chart-simple" style="color:var(--color-accent);"></i> Afinidad de Conexión (Autoridades compartidas)
-            </h4>
-            <div style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-bottom:1.5rem; width:100%; box-sizing:border-box;">
-              <span class="catalog-type-chip" style="font-size:0.75rem; padding:0.35rem 0.6rem; background:var(--bg-secondary); border:1px solid var(--border-light); flex-shrink:0;">
-                <strong>Comparten 3:</strong>&nbsp;<span style="color:var(--color-accent); font-weight:700;">${(t.weight_distribution&&t.weight_distribution[3]||0).toLocaleString()}</span>
-              </span>
-              <span class="catalog-type-chip" style="font-size:0.75rem; padding:0.35rem 0.6rem; background:var(--bg-secondary); border:1px solid var(--border-light); flex-shrink:0;">
-                <strong>Comparten 4:</strong>&nbsp;<span style="color:var(--color-collab); font-weight:700;">${(t.weight_distribution&&t.weight_distribution[4]||0).toLocaleString()}</span>
-              </span>
-              <span class="catalog-type-chip" style="font-size:0.75rem; padding:0.35rem 0.6rem; background:var(--bg-secondary); border:1px solid var(--border-light); flex-shrink:0;">
-                <strong>Comparten &ge; 5:</strong>&nbsp;<span style="color:var(--color-gold); font-weight:700;">${Object.entries(t.weight_distribution||{}).filter(([e])=>parseInt(e)>=5).reduce((e,[t,n])=>e+n,0).toLocaleString()}</span>
-              </span>
+            <div class="glass-card stat-card" style="padding:1rem; display:flex; align-items:center; gap:0.75rem;">
+              <div class="stat-icon books" style="background:rgba(82,117,94,0.08); width:2.5rem; height:2.5rem; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                <i class="fa-solid fa-tags" style="color:var(--color-collab); font-size:1.1rem;"></i>
+              </div>
+              <div>
+                <div class="stat-number" style="font-size:1.25rem; font-weight:700;">${a.toLocaleString()}</div>
+                <div class="stat-label" style="font-size:0.75rem; color:var(--text-secondary);">Autoridades</div>
+              </div>
             </div>
-            
-            <h4 style="font-size:0.9rem; font-weight:700; margin-bottom:0.75rem; color:var(--text-secondary);">
-              <i class="fa-solid fa-ghost" style="color:var(--text-muted);"></i> Libros sin Conexión (Muestra de 100 Huérfanos)
-            </h4>
-            <div class="inspector-scroll-list" style="display:flex; flex-direction:column; overflow-y:auto; max-height: 280px; background:var(--bg-secondary); border-radius:0.25rem; border:1px solid var(--border-light); padding:0.5rem; box-sizing:border-box; width:100%;">
-              ${t.sample_orphaned_books&&t.sample_orphaned_books.length>0?t.sample_orphaned_books.map(e=>`
-                <a href="#/catalog/graph/${e.biblio_id}" class="inspector-book-item" style="padding:0.4rem 0.5rem; display:flex; justify-content:space-between; align-items:center; text-decoration:none; color:var(--text-primary); width:100%; box-sizing:border-box; min-width:0; flex-shrink:0;">
-                  <div style="display:flex; align-items:center; gap:0.45rem; min-width:0; flex:1;">
-                    <i class="fa-solid fa-book-open" style="color:var(--text-muted); font-size:0.8rem; flex-shrink:0;"></i>
-                    <span class="inspector-book-title" style="font-size:0.8rem; font-weight:600; text-overflow:ellipsis; overflow:hidden; white-space:nowrap; width:100%; display:block;">${e.title}</span>
-                  </div>
-                  ${e.author?`<span style="font-size:0.7rem; color:var(--text-muted); flex-shrink:0; margin-left:0.5rem; text-overflow:ellipsis; overflow:hidden; white-space:nowrap; max-width:120px;">${e.author}</span>`:``}
-                </a>
-              `).join(``):`<div style="text-align:center; color:var(--text-muted); font-size:0.8rem; padding:1rem;">Ninguno detectado</div>`}
+            <div class="glass-card stat-card" style="padding:1rem; display:flex; align-items:center; gap:0.75rem;">
+              <div class="stat-icon checkouts" style="background:rgba(179,143,77,0.08); width:2.5rem; height:2.5rem; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                <i class="fa-solid fa-diagram-project" style="color:var(--color-gold); font-size:1.1rem;"></i>
+              </div>
+              <div>
+                <div class="stat-number" style="font-size:1.25rem; font-weight:700;">${o.toLocaleString()}</div>
+                <div class="stat-label" style="font-size:0.75rem; color:var(--text-secondary);">Conexiones</div>
+              </div>
             </div>
           </div>
-          
-          <div class="insight-column" style="min-width:0; width:100%; box-sizing:border-box; overflow:hidden;">
-            <h4 style="font-size:0.9rem; font-weight:700; margin-bottom:0.75rem; color:var(--text-secondary);">
-              <i class="fa-solid fa-crown" style="color:var(--color-gold);"></i> Obras más Conectadas del Catálogo (Top 100)
-            </h4>
-            <div class="inspector-scroll-list" style="display:flex; flex-direction:column; overflow-y:auto; max-height: 520px; background:var(--bg-secondary); border-radius:0.25rem; border:1px solid var(--border-light); padding:0.5rem; box-sizing:border-box; width:100%;">
-              ${t.most_connected_books&&t.most_connected_books.length>0?t.most_connected_books.map(e=>`
-                <a href="#/catalog/graph/${e.biblio_id}" class="inspector-book-item" style="padding:0.4rem 0.5rem; display:flex; align-items:center; justify-content:space-between; text-decoration:none; color:var(--text-primary); width:100%; box-sizing:border-box; min-width:0; flex-shrink:0;">
-                  <div style="display:flex; align-items:center; gap:0.45rem; min-width:0; flex:1;">
-                    <i class="fa-solid fa-book" style="color:var(--color-accent); font-size:0.8rem; flex-shrink:0;"></i>
-                    <span class="inspector-book-title" style="font-size:0.8rem; font-weight:600; text-overflow:ellipsis; overflow:hidden; white-space:nowrap; width:100%; display:block;">${e.title}</span>
+
+          <!-- Authority types -->
+          <div class="glass-card" style="padding:1.25rem;">
+            <h3 style="font-family:var(--font-display); font-size:1.1rem; font-weight:700; margin:0 0 1rem 0;">
+              <i class="fa-solid fa-layer-group" style="color:var(--color-accent);"></i> Tipos de Autoridades
+            </h3>
+            <div class="catalog-type-grid" style="display:flex; flex-direction:column; gap:0.5rem;">
+              ${Object.entries(s).sort((e,t)=>t[1]-e[1]).map(([e,t])=>{let n=Na(e),r=Pa(e);return`
+                  <div class="catalog-type-chip" style="background:${n.bg}; border:1px solid ${n.border}; display:flex; align-items:center; justify-content:space-between; padding:0.4rem 0.6rem; border-radius:4px;">
+                    <span style="display:flex; align-items:center; gap:0.4rem; font-size:0.8rem; font-weight:600; color:${n.text};">
+                      <i class="${r}" style="color:${n.text};"></i>
+                      ${e}
+                    </span>
+                    <span class="catalog-type-count" style="font-size:0.75rem; font-weight:700; color:${n.text}; background:rgba(255,255,255,0.4); padding:0.1rem 0.4rem; border-radius:10px;">${t}</span>
                   </div>
-                  <span class="similarity-badge" style="background:rgba(124, 25, 51, 0.08); color:var(--color-accent); border:1px solid rgba(124, 25, 51, 0.15); font-weight:700; padding:0.1rem 0.4rem; border-radius:0.2rem; font-size:0.72rem; flex-shrink:0; margin-left:0.5rem;" title="${e.connection_count} conexiones">${e.connection_count}</span>
+                `}).join(``)}
+            </div>
+          </div>
+
+          <!-- Advanced analysis -->
+          <div class="glass-card" style="padding:1.25rem;">
+            <h3 style="font-family:var(--font-display); font-size:1.1rem; font-weight:700; margin:0 0 1rem 0;">
+              <i class="fa-solid fa-crown" style="color:var(--color-gold);"></i> Obras Clave (Más Conectadas)
+            </h3>
+            <div class="inspector-scroll-list" style="display:flex; flex-direction:column; gap:0.35rem; max-height: 350px; overflow-y:auto; padding-right:0.25rem;">
+              ${t.most_connected_books&&t.most_connected_books.length>0?t.most_connected_books.slice(0,15).map(e=>`
+                <a href="#/catalog/graph/${e.biblio_id}" class="inspector-book-item" style="padding:0.4rem; display:flex; align-items:center; justify-content:space-between; text-decoration:none; color:var(--text-primary); background:var(--bg-secondary); border-radius:4px; border:1px solid var(--border-light); min-width:0;">
+                  <div style="display:flex; align-items:center; gap:0.45rem; min-width:0; flex:1;">
+                    <i class="fa-solid fa-book" style="color:var(--color-accent); font-size:0.75rem; flex-shrink:0;"></i>
+                    <span class="inspector-book-title" style="font-size:0.75rem; font-weight:600; text-overflow:ellipsis; overflow:hidden; white-space:nowrap;">${e.title}</span>
+                  </div>
+                  <span class="similarity-badge" style="background:rgba(124, 25, 51, 0.08); color:var(--color-accent); font-weight:700; padding:0.05rem 0.35rem; border-radius:3px; font-size:0.68rem; flex-shrink:0; margin-left:0.5rem;">${e.connection_count}</span>
                 </a>
               `).join(``):`<div style="text-align:center; color:var(--text-muted); font-size:0.8rem; padding:1rem;">Cargando...</div>`}
             </div>
           </div>
-        </div>
-      </div>
 
-      <!-- Search and books list -->
-      <div class="glass-card">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem; flex-wrap:wrap; gap:0.75rem;">
-          <h3 style="font-family:var(--font-display); font-size:1.25rem; font-weight:700; margin:0;">
-            <i class="fa-solid fa-building-columns" style="color:var(--color-accent);"></i> Explorador del Acervo
-          </h3>
-          <div class="search-bar" style="max-width:350px;">
-            <i class="fa-solid fa-magnifying-glass search-icon"></i>
-            <input type="text" id="catalog-search" placeholder="Buscar por título, autor o autoridad..." class="search-input">
-          </div>
         </div>
 
-        <div id="catalog-books-list">
-          ${this.renderBooksList(n)}
-        </div>
       </div>
-    `,this.bindEvents()},renderBooksList(e){return e.length?e.map(e=>`
-      <div class="catalog-book-card">
-        <div class="catalog-book-header">
-          <div class="catalog-book-info">
-            <a href="#/catalog/graph/${e.biblio_id}" class="catalog-book-title">${e.title}</a>
-            ${e.author?`<div class="catalog-book-author"><i class="fa-solid fa-feather"></i> ${e.author}</div>`:``}
+    `,this.bindEvents()},renderBooksList(e){return e.length?e.map(e=>{let t=e.match_score!==void 0,n=``;if(t){let t=`#52755e`;e.match_score<80&&(t=`#b38f4d`),e.match_score<65&&(t=`#56697a`),n=`
+          <div class="search-match-badge" style="background:${t}12; color:${t}; border:1px solid ${t}25; font-size:0.75rem; font-weight:700; padding:0.2rem 0.5rem; border-radius:4px; display:inline-flex; align-items:center; gap:0.25rem;" title="Similitud de búsqueda">
+            <i class="fa-solid fa-chart-simple"></i> Relevancia: ${e.match_score}%
           </div>
-          <div class="catalog-book-stats">
-            ${e.connection_count>0?`
-              <a href="#/catalog/graph/${e.biblio_id}" class="btn btn-outline" style="font-size:0.75rem; padding:0.3rem 0.65rem;">
-                <i class="fa-solid fa-diagram-project"></i> ${e.connection_count} conexiones
-              </a>
-            `:`
-              <span style="font-size:0.75rem; color:var(--text-muted);">Sin conexiones</span>
-            `}
+        `}return`
+        <div class="catalog-book-card" style="position:relative; overflow:hidden; padding: 1rem; border-bottom: 1px solid var(--border-light); margin-bottom: 0.75rem; background: var(--bg-primary); border-radius: 6px;">
+          ${t?`<div style="position:absolute; top:0; left:0; width:3px; height:100%; background:var(--color-accent);"></div>`:``}
+          <div class="catalog-book-header" style="display:flex; justify-content:space-between; align-items:flex-start; gap:1rem;">
+            <div class="catalog-book-info" style="min-width:0; flex:1;">
+              <a href="#/catalog/graph/${e.biblio_id}" class="catalog-book-title" style="font-family:var(--font-display); font-size:1.05rem; font-weight:700; color:var(--text-primary); text-decoration:none; display:block; margin-bottom:0.25rem;">${e.title}</a>
+              ${e.author?`<div class="catalog-book-author" style="font-size:0.8rem; color:var(--text-secondary);"><i class="fa-solid fa-feather"></i> ${e.author}</div>`:``}
+            </div>
+            <div style="display:flex; flex-direction:column; align-items:flex-end; gap:0.5rem; flex-shrink:0;">
+              ${n}
+              <div class="catalog-book-stats">
+                ${e.connection_count>0?`
+                  <a href="#/catalog/graph/${e.biblio_id}" class="btn btn-outline" style="font-size:0.72rem; padding:0.25rem 0.55rem; white-space:nowrap;">
+                    <i class="fa-solid fa-diagram-project"></i> ${e.connection_count} conexiones
+                  </a>
+                `:`
+                  <span style="font-size:0.72rem; color:var(--text-muted);">Sin conexiones</span>
+                `}
+              </div>
+            </div>
+          </div>
+          
+          ${e.match_explanation?`
+            <div style="margin-top: 0.6rem; font-size: 0.78rem; color: var(--text-secondary); background: rgba(86,105,122,0.04); padding: 0.4rem 0.6rem; border-radius: 4px; display: inline-flex; align-items: center; gap: 0.35rem; border: 1px dashed rgba(86,105,122,0.15);">
+              <i class="fa-solid fa-magnifying-glass-chart" style="color:var(--color-accent); font-size:0.85rem;"></i>
+              <span><strong>Motivo del ranking:</strong> ${e.match_explanation}</span>
+            </div>
+          `:``}
+
+          <div class="catalog-auth-list" style="margin-top:0.75rem; display:flex; flex-wrap:wrap; gap:0.35rem;">
+            ${e.authorities.map(e=>Fa(e)).join(``)}
           </div>
         </div>
-        <div class="catalog-auth-list">
-          ${e.authorities.map(e=>Fa(e)).join(``)}
+      `}).join(``):`
+        <div style="text-align:center; padding:3rem 2rem; color:var(--text-secondary);">
+          <i class="fa-solid fa-book-open" style="font-size:2.5rem; color:var(--text-muted); margin-bottom:1rem;"></i>
+          <p style="font-size:1.05rem; font-weight:500;">No se encontraron obras con los términos especificados.</p>
+          <p style="font-size:0.85rem; color:var(--text-muted); margin-top:0.25rem;">Intenta buscar por palabras clave o revisa la ortografía.</p>
         </div>
-      </div>
-    `).join(``):`
-        <div style="text-align:center; padding:2rem; color:var(--text-secondary);">
-          <i class="fa-solid fa-book-open" style="font-size:2rem; color:var(--text-muted); margin-bottom:0.75rem;"></i>
-          <p>No se encontraron obras con las autoridades especificadas.</p>
-        </div>
-      `},bindEvents(){let e=document.getElementById(`catalog-search`),t=document.getElementById(`catalog-books-list`),n;e&&e.addEventListener(`input`,()=>{clearTimeout(n),n=setTimeout(async()=>{let n=e.value.trim();t.innerHTML=`<div style="text-align:center; padding:2rem;"><i class="fa fa-spinner fa-spin fa-2x" style="color:var(--color-accent)"></i></div>`;try{let e=await r.getCatalogBooks(n,100);t.innerHTML=this.renderBooksList(e)}catch(e){t.innerHTML=`<div style="text-align:center; padding:2rem; color:var(--color-accent);">Error al buscar: ${e.message}</div>`}},350)})}},La={Autor:`#7c1933`,Tema:`#52755e`,"Tema (Persona)":`#52755e`,"Tema (Corporativo)":`#52755e`,Lugar:`#56697a`,Corporativo:`#b38f4d`,"Título Uniforme":`#805a96`},Ra={Autor:`fa-solid fa-feather`,Tema:`fa-solid fa-tags`,"Tema (Persona)":`fa-solid fa-user-tag`,"Tema (Corporativo)":`fa-solid fa-building-flag`,Lugar:`fa-solid fa-map-pin`,Corporativo:`fa-solid fa-building`,"Título Uniforme":`fa-solid fa-bookmark`};function za(e){return e.type===`target_book`?`#7c1933`:e.type===`connected_book`?`#56697a`:e.type===`authority`&&La[e.authority_type]||`#888`}function Ba(e){return e.type===`target_book`?18:e.type===`authority`?Math.min(8+(e.book_count||1)*1.5,16):e.type===`connected_book`?10:8}var Va=[i,a,o,Aa,Ia,{path:`/catalog/graph/:id`,navKey:`catalog`,async render(e,t){let n=t.id,[i,a]=await Promise.all([r.getCatalogBook(n),r.getCatalogGraph(n,15)]);e.innerHTML=`
+      `},bindEvents(){let e=document.getElementById(`catalog-search`),t=document.getElementById(`catalog-books-list`),n;e&&(e.addEventListener(`focus`,()=>{e.style.borderColor=`var(--color-accent)`,e.style.boxShadow=`0 4px 20px rgba(124, 25, 51, 0.08)`}),e.addEventListener(`blur`,()=>{e.style.borderColor=`var(--border-light)`,e.style.boxShadow=`0 4px 20px rgba(0, 0, 0, 0.02)`}),e.addEventListener(`input`,()=>{clearTimeout(n),n=setTimeout(async()=>{let n=e.value.trim();t.innerHTML=`<div style="text-align:center; padding:2rem;"><i class="fa fa-spinner fa-spin fa-2x" style="color:var(--color-accent)"></i></div>`;try{let e=await r.getCatalogBooks(n,100);t.innerHTML=this.renderBooksList(e)}catch(e){t.innerHTML=`<div style="text-align:center; padding:2rem; color:var(--color-accent);">Error al buscar: ${e.message}</div>`}},350)}))}},La={Autor:`#7c1933`,Tema:`#52755e`,"Tema (Persona)":`#52755e`,"Tema (Institución)":`#52755e`,Lugar:`#56697a`,"Institución / Organización":`#b38f4d`,"Título Uniforme":`#805a96`},Ra={Autor:`fa-solid fa-feather`,Tema:`fa-solid fa-tags`,"Tema (Persona)":`fa-solid fa-user-tag`,"Tema (Institución)":`fa-solid fa-building-flag`,Lugar:`fa-solid fa-map-pin`,"Institución / Organización":`fa-solid fa-building`,"Título Uniforme":`fa-solid fa-bookmark`};function za(e){return e.type===`target_book`?`#7c1933`:e.type===`connected_book`?`#56697a`:e.type===`authority`&&La[e.authority_type]||`#888`}function Ba(e){return e.type===`target_book`?18:e.type===`authority`?Math.min(8+(e.book_count||1)*1.5,16):e.type===`connected_book`?10:8}var Va=[i,a,o,Aa,Ia,{path:`/catalog/graph/:id`,navKey:`catalog`,async render(e,t){let n=t.id,[i,a]=await Promise.all([r.getCatalogBook(n),r.getCatalogGraph(n,15)]);e.innerHTML=`
       <div style="margin-bottom:1.5rem;">
         <a href="#/catalog" style="color:var(--text-secondary); text-decoration:none; font-size:0.85rem;">
           <i class="fa-solid fa-arrow-left"></i> Volver al Catálogo
@@ -826,7 +796,7 @@
               <div class="legend-item"><div class="legend-dot" style="background:#7c1933; opacity:0.6;"></div> Autor</div>
               <div class="legend-item"><div class="legend-dot" style="background:#52755e;"></div> Tema</div>
               <div class="legend-item"><div class="legend-dot" style="background:#56697a; opacity:0.6;"></div> Lugar</div>
-              <div class="legend-item"><div class="legend-dot" style="background:#b38f4d;"></div> Corporativo</div>
+              <div class="legend-item"><div class="legend-dot" style="background:#b38f4d;"></div> Institución / Organización</div>
               <div class="legend-item"><div class="legend-dot" style="background:#805a96;"></div> Título Uniforme</div>
             </div>
           </div>
