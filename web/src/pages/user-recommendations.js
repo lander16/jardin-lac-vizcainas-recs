@@ -9,7 +9,7 @@ export const UserRecommendationsPage = {
     // Fetch initial details and recommendations
     const [user, recsData] = await Promise.all([
       api.getUserDetail(userId),
-      api.getRecommendations(userId, 0.5)
+      api.getRecommendations(userId, 0.33, 0.33, 0.34)
     ]);
     
     if (!user) {
@@ -52,22 +52,42 @@ export const UserRecommendationsPage = {
         <!-- Sidebar controls -->
         <div class="controls-sidebar">
           
-          <!-- Alpha weight slider -->
+          <!-- Weight sliders -->
           <div class="glass-card slider-container">
-            <h3 style="font-family:var(--font-display); font-size:1.25rem; font-weight:700; display:flex; align-items:center; gap:0.4rem;">
+            <h3 style="font-family:var(--font-display); font-size:1.25rem; font-weight:700; display:flex; align-items:center; gap:0.4rem; margin-bottom: 0.5rem;">
               <i class="fa-solid fa-sliders" style="color:var(--color-gold)"></i> Balance de Recomendación
             </h3>
-            <p style="font-size:0.85rem; color:var(--text-secondary); line-height:1.4;">Ajuste el balance entre similitudes de contenido (descripciones de libros) y filtrado colaborativo (red de lectores).</p>
+            <p style="font-size:0.85rem; color:var(--text-secondary); line-height:1.4; margin-bottom: 1.25rem;">Ajuste la relevancia de cada dimensión para personalizar las sugerencias de lectura.</p>
             
-            <input type="range" id="alpha-slider" min="0" max="1" step="0.05" value="0.5">
-            
-            <div class="slider-labels">
-              <span class="slider-label-content"><i class="fa-solid fa-tag"></i> Contenido (Coseno)</span>
-              <span class="slider-label-collab">Red (Jaccard) <i class="fa-solid fa-user-friends"></i></span>
+            <!-- Content weight slider -->
+            <div style="margin-bottom:1rem;">
+              <div class="slider-labels" style="display:flex; justify-content:space-between; margin-bottom:0.25rem; font-size:0.8rem; font-weight:600;">
+                <span><i class="fa-solid fa-tag" style="color:var(--color-content)"></i> Contenido (Temático)</span>
+                <span id="weight-content-pct" style="color:var(--color-content)">33%</span>
+              </div>
+              <input type="range" id="weight-content-slider" min="0" max="100" step="1" value="33" style="width:100%;">
+            </div>
+
+            <!-- Collab weight slider -->
+            <div style="margin-bottom:1rem;">
+              <div class="slider-labels" style="display:flex; justify-content:space-between; margin-bottom:0.25rem; font-size:0.8rem; font-weight:600;">
+                <span><i class="fa-solid fa-user-group" style="color:var(--color-collab)"></i> Lectores (Afinidad)</span>
+                <span id="weight-collab-pct" style="color:var(--color-collab)">33%</span>
+              </div>
+              <input type="range" id="weight-collab-slider" min="0" max="100" step="1" value="33" style="width:100%;">
+            </div>
+
+            <!-- Authority weight slider -->
+            <div style="margin-bottom:1rem;">
+              <div class="slider-labels" style="display:flex; justify-content:space-between; margin-bottom:0.25rem; font-size:0.8rem; font-weight:600;">
+                <span><i class="fa-solid fa-bookmark" style="color:var(--color-authority)"></i> Autoridades (Catálogo)</span>
+                <span id="weight-auth-pct" style="color:var(--color-authority)">34%</span>
+              </div>
+              <input type="range" id="weight-auth-slider" min="0" max="100" step="1" value="34" style="width:100%;">
             </div>
             
-            <div class="alpha-value-display" id="alpha-value-display">
-              Balance: 50% Contenido / 50% Red
+            <div class="alpha-value-display" id="weights-value-display" style="font-size:0.8rem; text-align:center; font-weight:700; border-top:1px solid var(--border-light); padding-top:0.75rem; margin-top:0.75rem; color:var(--text-secondary);">
+              Configuración: 33% Contenido / 33% Lectores / 34% Autoridades
             </div>
           </div>
 
@@ -148,21 +168,36 @@ export const UserRecommendationsPage = {
       let badgeIcon = '';
       let barFillClass = '';
       
-      if (rec.source === 'both') {
+      if (rec.source === 'all') {
         badgeClass = 'both';
-        badgeLabel = 'Híbrido';
-        badgeIcon = '<i class="fa-solid fa-circle-nodes"></i>';
-        barFillClass = 'both';
+        badgeLabel = 'Alta Recomendación';
+        badgeIcon = '<i class="fa-solid fa-star" style="color:var(--color-gold);"></i>';
+        barFillClass = 'all';
+      } else if (rec.source === 'multiple') {
+        badgeClass = 'both';
+        badgeLabel = 'Multi-fuente';
+        badgeIcon = '<i class="fa-solid fa-layer-group"></i>';
+        barFillClass = 'multiple';
       } else if (rec.source === 'content') {
         badgeClass = 'content';
         badgeLabel = 'Contenido';
         badgeIcon = '<i class="fa-solid fa-tag"></i>';
         barFillClass = 'content';
-      } else {
+      } else if (rec.source === 'collaborative') {
         badgeClass = 'collaborative';
-        badgeLabel = 'Red de Lectura';
-        badgeIcon = '<i class="fa-solid fa-user-friends"></i>';
+        badgeLabel = 'Red de Lectores';
+        badgeIcon = '<i class="fa-solid fa-user-group"></i>';
         barFillClass = 'collaborative';
+      } else if (rec.source === 'authority') {
+        badgeClass = 'authority';
+        badgeLabel = 'Autoridades';
+        badgeIcon = '<i class="fa-solid fa-bookmark"></i>';
+        barFillClass = 'authority';
+      } else {
+        badgeClass = 'both';
+        badgeLabel = 'Recomendado';
+        badgeIcon = '<i class="fa-solid fa-star"></i>';
+        barFillClass = 'both';
       }
 
       // Convert score to percentage
@@ -208,6 +243,7 @@ export const UserRecommendationsPage = {
   renderExplanationDetails(exp) {
     let contentHtml = '';
     let collabHtml = '';
+    let authHtml = '';
 
     if (exp.content_details && exp.content_details.length > 0) {
       contentHtml = `
@@ -260,12 +296,53 @@ export const UserRecommendationsPage = {
       `;
     }
 
-    return contentHtml + (contentHtml && collabHtml ? '<div style="margin: 0.75rem 0; border-top:1px solid rgba(0,0,0,0.05);"></div>' : '') + collabHtml;
+    if (exp.auth_details && exp.auth_details.length > 0) {
+      authHtml = `
+        <div class="explanation-section">
+          <div class="explanation-title auth">
+            <i class="fa-solid fa-bookmark"></i> Conexión por autoridades Koha
+          </div>
+          ${exp.auth_details.map(item => {
+            const authList = item.shared_authorities.map(auth => {
+              let typeLabel = auth.type;
+              let badgeColor = '';
+              if (auth.type === 'Autor') { badgeColor = '#7c1933'; }
+              else if (auth.type === 'Tema') { badgeColor = '#52755e'; }
+              else if (auth.type === 'Lugar') { badgeColor = '#56697a'; }
+              else if (auth.type === 'Corporativo') { badgeColor = '#b38f4d'; }
+              else { badgeColor = '#7d4f9b'; }
+              
+              return `<span class="tag" style="background:${badgeColor}15; color:${badgeColor}; border:1px solid ${badgeColor}30; padding:0.1rem 0.35rem; border-radius:3px; font-size:0.75rem; font-weight:600; margin-right:0.25rem; white-space:nowrap; display:inline-block; margin-top:0.25rem;">${auth.name} (${typeLabel})</span>`;
+            }).join(' ');
+
+            return `
+              <div class="explanation-row" style="flex-direction:column; align-items:flex-start; gap:0.25rem; margin-bottom:0.75rem;">
+                <div style="font-size:0.8rem;">
+                  Conectado con: <strong>${item.related_title}</strong>
+                </div>
+                <div style="display:flex; flex-wrap:wrap; gap:0.15rem; margin-top:0.15rem; width:100%;">
+                  ${authList}
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      `;
+    }
+
+    const parts = [contentHtml, collabHtml, authHtml].filter(p => p !== '');
+    return parts.join('<div style="margin: 0.75rem 0; border-top:1px solid rgba(0,0,0,0.05);"></div>');
   },
 
   bindEvents(userId, existingCheckouts) {
-    const alphaSlider = document.getElementById('alpha-slider');
-    const alphaVal = document.getElementById('alpha-value-display');
+    const sliderContent = document.getElementById('weight-content-slider');
+    const sliderCollab = document.getElementById('weight-collab-slider');
+    const sliderAuth = document.getElementById('weight-auth-slider');
+    
+    const labelContent = document.getElementById('weight-content-pct');
+    const labelCollab = document.getElementById('weight-collab-pct');
+    const labelAuth = document.getElementById('weight-auth-pct');
+    const labelOverall = document.getElementById('weights-value-display');
     const recsContainer = document.getElementById('recs-container');
     const addCheckoutBtn = document.getElementById('btn-add-checkout');
     const modal = document.getElementById('checkout-modal');
@@ -276,27 +353,60 @@ export const UserRecommendationsPage = {
     // Set of existing book_ids for checkout checks
     const existingIds = new Set(existingCheckouts.map(b => b.book_id));
 
-    // Dynamic slider updates
-    if (alphaSlider && alphaVal && recsContainer) {
-      alphaSlider.addEventListener('input', async (e) => {
-        const val = parseFloat(e.target.value);
-        
-        // Update label
-        const contentPct = Math.round(val * 100);
-        const collabPct = 100 - contentPct;
-        alphaVal.innerHTML = `Balance: ${contentPct}% Contenido / ${collabPct}% Red`;
-        
-        // Fetch recommendations dynamically!
-        try {
-          const freshData = await api.getRecommendations(userId, val);
-          recsContainer.innerHTML = this.renderRecommendationsList(freshData.recommendations);
-          
-          // Re-bind accordion clicks on dynamically generated elements
-          this.bindAccordions();
-        } catch (err) {
-          console.error("Failed to fetch dynamic recommendations:", err);
-        }
-      });
+    let prevWeights = {
+      content: 33,
+      collab: 33,
+      auth: 34
+    };
+
+    const updateWeights = async (changedKey, newVal) => {
+      newVal = parseInt(newVal);
+      const otherKeys = ['content', 'collab', 'auth'].filter(k => k !== changedKey);
+      
+      const otherSumPrev = prevWeights[otherKeys[0]] + prevWeights[otherKeys[1]];
+      const remaining = 100 - newVal;
+      
+      let val0, val1;
+      if (otherSumPrev > 0) {
+        val0 = Math.round((prevWeights[otherKeys[0]] / otherSumPrev) * remaining);
+        val1 = remaining - val0;
+      } else {
+        val0 = Math.round(remaining / 2);
+        val1 = remaining - val0;
+      }
+      
+      prevWeights[changedKey] = newVal;
+      prevWeights[otherKeys[0]] = val0;
+      prevWeights[otherKeys[1]] = val1;
+      
+      sliderContent.value = prevWeights.content;
+      sliderCollab.value = prevWeights.collab;
+      sliderAuth.value = prevWeights.auth;
+      
+      labelContent.innerText = `${prevWeights.content}%`;
+      labelCollab.innerText = `${prevWeights.collab}%`;
+      labelAuth.innerText = `${prevWeights.auth}%`;
+      
+      labelOverall.innerHTML = `Configuración: ${prevWeights.content}% Contenido / ${prevWeights.collab}% Lectores / ${prevWeights.auth}% Autoridades`;
+      
+      try {
+        const freshData = await api.getRecommendations(
+          userId, 
+          prevWeights.content / 100, 
+          prevWeights.collab / 100, 
+          prevWeights.auth / 100
+        );
+        recsContainer.innerHTML = this.renderRecommendationsList(freshData.recommendations);
+        this.bindAccordions();
+      } catch (err) {
+        console.error("Failed to fetch dynamic recommendations:", err);
+      }
+    };
+    
+    if (sliderContent && sliderCollab && sliderAuth && recsContainer) {
+      sliderContent.addEventListener('input', (e) => updateWeights('content', e.target.value));
+      sliderCollab.addEventListener('input', (e) => updateWeights('collab', e.target.value));
+      sliderAuth.addEventListener('input', (e) => updateWeights('auth', e.target.value));
     }
 
     // Modal controls

@@ -30,8 +30,13 @@ export const api = {
   
   getUserDetail: (userId) => fetchAPI(`/users/${userId}`),
   
-  getRecommendations: (userId, alpha = 0.5) => 
-    fetchAPI(`/users/${userId}/recommendations?alpha=${alpha}`),
+  getRecommendations: (userId, wContent = 0.33, wCollab, wAuth) => {
+    if (wCollab === undefined && wAuth === undefined) {
+      const alpha = wContent;
+      return fetchAPI(`/users/${userId}/recommendations?alpha=${alpha}`);
+    }
+    return fetchAPI(`/users/${userId}/recommendations?w_content=${wContent}&w_collab=${wCollab}&w_auth=${wAuth}`);
+  },
     
   checkoutBook: (userId, bookId, title = '', description = '') => 
     fetchAPI(`/users/${userId}/checkout`, {

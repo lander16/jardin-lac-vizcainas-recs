@@ -12,12 +12,15 @@ class RecommenderEngine:
         self.names_path = os.path.join(data_dir, "patron_names.json")
         self.user_graph_path = os.path.join(data_dir, "user_graph.json")
         self.active_checkouts_path = os.path.join(data_dir, "active_checkouts.json")
+        self.authority_graph_path = os.path.join(data_dir, "koha/authority_graph.json")
         
         self.books = {}
         self.content_similarities = {}
         self.patrons = {}
         self.user_checkouts = {} # user_id -> set of book_ids
         self.checkout_history = [] # list of dicts for global logs
+        self.authority_lookup = {}
+        self.authority_connections = {}
         
         self.load_data()
         
@@ -63,6 +66,42 @@ class RecommenderEngine:
                 self.save_active_checkouts()
             else:
                 print("Warning: synthetic_checkouts.csv not found.")
+
+        # Load authority graph
+        if os.path.exists(self.authority_graph_path):
+            with open(self.authority_graph_path, 'r', encoding='utf-8') as f:
+                ag = json.load(f)
+            
+            self.authority_lookup = {
+                auth['authority_id']: {
+                    'name': auth.get('name', ''),
+                    'type': auth.get('type', '')
+                }
+                for auth in ag.get('authorities', [])
+            }
+
+            self.authority_connections = {}
+            for conn in ag.get('connections', []):
+                src = conn['source']
+                tgt = conn['target']
+                weight = conn['weight']
+                shared = conn.get('shared_authority_ids', [])
+
+                if src not in self.authority_connections:
+                    self.authority_connections[src] = {}
+                self.authority_connections[src][tgt] = {
+                    'weight': weight,
+                    'shared_authority_ids': shared
+                }
+
+                if tgt not in self.authority_connections:
+                    self.authority_connections[tgt] = {}
+                self.authority_connections[tgt][src] = {
+                    'weight': weight,
+                    'shared_authority_ids': shared
+                }
+        else:
+            print("Warning: koha/authority_graph.json not found.")
                 
     def save_active_checkouts(self):
         os.makedirs(self.data_dir, exist_ok=True)
@@ -129,13 +168,37 @@ class RecommenderEngine:
         self.save_active_checkouts()
         return True
         
-    def get_recommendations(self, user_id, alpha=0.5):
+    def get_recommendations(self, user_id, w_content=None, w_collab=None, w_auth=None, alpha=None):
         if user_id not in self.user_checkouts:
             return []
             
         checkout_set = self.user_checkouts[user_id]
         if not checkout_set:
             return []
+            
+        # Parse weights and maintain backwards compatibility
+        if w_content is None or w_collab is None or w_auth is None:
+            if alpha is not None:
+                w_content = float(alpha)
+                w_collab = 1.0 - w_content
+                w_auth = 0.0
+            else:
+                w_content = 0.33
+                w_collab = 0.33
+                w_auth = 0.34
+        else:
+            w_content = float(w_content)
+            w_collab = float(w_collab)
+            w_auth = float(w_auth)
+            
+            # Normalize weights to sum to 1.0
+            total_w = w_content + w_collab + w_auth
+            if total_w > 0:
+                w_content /= total_w
+                w_collab /= total_w
+                w_auth /= total_w
+            else:
+                w_content, w_collab, w_auth = 0.33, 0.33, 0.34
             
         # 1. Content-based scores
         content_scores = {}
@@ -165,7 +228,7 @@ class RecommenderEngine:
         for bid in content_explanations:
             content_explanations[bid].sort(key=lambda x: x["similarity"], reverse=True)
             
-        # 2. Collaborative filtering Jaccard calculations (Dynamically calculated based on current active checkouts)
+        # 2. Collaborative filtering Jaccard calculations (Dynamically calculated)
         collab_scores = {}
         collab_contributions = {}
         
@@ -182,7 +245,6 @@ class RecommenderEngine:
             
             if jaccard > 0:
                 other_patron = self.patrons.get(other_uid, {"name": f"User {other_uid[:8]}"})
-                # Check candidate books checked out by other but not target
                 candidates = other_bids.difference(checkout_set)
                 for cand_bid in candidates:
                     if cand_bid not in collab_scores:
@@ -198,39 +260,86 @@ class RecommenderEngine:
         for bid in collab_contributions:
             collab_contributions[bid].sort(key=lambda x: x["similarity"], reverse=True)
             
-        # 3. Hybrid Merge
-        all_candidates = set(content_scores.keys()).union(set(collab_scores.keys()))
+        # 3. Authority-based scores
+        auth_scores = {}
+        auth_explanations = {}
+        
+        for bid in checkout_set:
+            if bid not in self.authority_connections:
+                continue
+            for sim_bid, conn_info in self.authority_connections[bid].items():
+                if sim_bid in checkout_set:
+                    continue
+                    
+                weight = conn_info['weight']
+                shared_ids = conn_info['shared_authority_ids']
+                
+                if sim_bid not in auth_scores:
+                    auth_scores[sim_bid] = 0.0
+                    auth_explanations[sim_bid] = []
+                    
+                auth_scores[sim_bid] += weight
+                
+                resolved_authorities = [
+                    {
+                        'authority_id': aid,
+                        'name': self.authority_lookup[aid]['name'],
+                        'type': self.authority_lookup[aid]['type']
+                    }
+                    for aid in shared_ids
+                    if aid in self.authority_lookup
+                ]
+                
+                auth_explanations[sim_bid].append({
+                    "related_book_id": bid,
+                    "related_title": self.books.get(bid, {}).get("title", f"Book {bid}"),
+                    "weight": weight,
+                    "shared_authorities": resolved_authorities
+                })
+                
+        for bid in auth_explanations:
+            auth_explanations[bid].sort(key=lambda x: x["weight"], reverse=True)
+            
+        # 4. Hybrid Merge
+        all_candidates = set(content_scores.keys()).union(set(collab_scores.keys())).union(set(auth_scores.keys()))
         
         max_content = max(content_scores.values()) if content_scores else 1.0
         max_collab = max(collab_scores.values()) if collab_scores else 1.0
+        max_auth = max(auth_scores.values()) if auth_scores else 1.0
         
         if max_content == 0: max_content = 1.0
         if max_collab == 0: max_collab = 1.0
+        if max_auth == 0: max_auth = 1.0
         
         recommendations = []
         for bid in all_candidates:
             raw_content = content_scores.get(bid, 0.0)
             raw_collab = collab_scores.get(bid, 0.0)
+            raw_auth = auth_scores.get(bid, 0.0)
             
             norm_content = raw_content / max_content
             norm_collab = raw_collab / max_collab
+            norm_auth = raw_auth / max_auth
             
-            hybrid_score = alpha * norm_content + (1.0 - alpha) * norm_collab
+            hybrid_score = (w_content * norm_content) + (w_collab * norm_collab) + (w_auth * norm_auth)
             
-            has_content = bid in content_scores
-            has_collab = bid in collab_scores
+            sources = []
+            if bid in content_scores: sources.append("content")
+            if bid in collab_scores: sources.append("collaborative")
+            if bid in auth_scores: sources.append("authority")
             
-            if has_content and has_collab:
-                source = "both"
-            elif has_content:
-                source = "content"
+            if len(sources) == 3:
+                source = "all"
+            elif len(sources) == 2:
+                source = "multiple"
             else:
-                source = "collaborative"
+                source = sources[0]
                 
             explanation = {
                 "source": source,
                 "content_details": content_explanations.get(bid, [])[:3],
-                "collab_details": collab_contributions.get(bid, [])[:5]
+                "collab_details": collab_contributions.get(bid, [])[:5],
+                "auth_details": auth_explanations.get(bid, [])[:3]
             }
             
             book_info = self.books.get(bid, {"title": f"Book {bid}", "description": ""})
@@ -242,8 +351,10 @@ class RecommenderEngine:
                 "hybrid_score": float(hybrid_score),
                 "norm_content_score": float(norm_content),
                 "norm_collab_score": float(norm_collab),
+                "norm_auth_score": float(norm_auth),
                 "raw_content_score": float(raw_content),
                 "raw_collab_score": float(raw_collab),
+                "raw_auth_score": float(raw_auth),
                 "source": source,
                 "explanation": explanation
             })

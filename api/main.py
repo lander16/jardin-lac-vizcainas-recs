@@ -46,10 +46,25 @@ def get_user(user_id: str):
     return user
 
 @app.get("/api/users/{user_id}/recommendations")
-def get_user_recommendations(user_id: str, alpha: float = Query(0.5, ge=0.0, le=1.0)):
-    recs = engine.get_recommendations(user_id, alpha=alpha)
+def get_user_recommendations(
+    user_id: str,
+    w_content: float = Query(None, ge=0.0),
+    w_collab: float = Query(None, ge=0.0),
+    w_auth: float = Query(None, ge=0.0),
+    alpha: float = Query(None, ge=0.0, le=1.0)
+):
+    recs = engine.get_recommendations(
+        user_id,
+        w_content=w_content,
+        w_collab=w_collab,
+        w_auth=w_auth,
+        alpha=alpha
+    )
     return {
         "user_id": user_id,
+        "w_content": w_content,
+        "w_collab": w_collab,
+        "w_auth": w_auth,
         "alpha": alpha,
         "recommendations": recs
     }

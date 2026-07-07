@@ -21,6 +21,7 @@
   --color-content: var(--color-slate);
   --color-collab: var(--color-sage);
   --color-hybrid: var(--color-gold);
+  --color-authority: #7d4f9b;     /* Classic Academic Purple */
   
   --shadow-main: 0 4px 20px rgba(45, 36, 30, 0.08);
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
@@ -627,6 +628,12 @@ input[type=range]::-webkit-slider-thumb:hover {
   border: 1px solid rgba(179, 143, 77, 0.2);
 }
 
+.source-badge.authority {
+  background: rgba(125, 79, 155, 0.08);
+  color: var(--color-authority);
+  border: 1px solid rgba(125, 79, 155, 0.2);
+}
+
 /* Score Visual Meter */
 .score-meter-container {
   display: flex;
@@ -659,7 +666,10 @@ input[type=range]::-webkit-slider-thumb:hover {
 
 .score-fill.content { background: var(--color-content); }
 .score-fill.collaborative { background: var(--color-collab); }
+.score-fill.authority { background: var(--color-authority); }
 .score-fill.both { background: var(--color-gold); }
+.score-fill.multiple { background: var(--color-gold); }
+.score-fill.all { background: var(--color-accent); }
 
 /* Explanation accordion */
 .explanation-btn {
@@ -720,6 +730,7 @@ input[type=range]::-webkit-slider-thumb:hover {
 
 .explanation-title.content { color: var(--color-content); }
 .explanation-title.collab { color: var(--color-collab); }
+.explanation-title.auth { color: var(--color-authority); }
 
 .explanation-row {
   display: flex;
@@ -754,6 +765,7 @@ input[type=range]::-webkit-slider-thumb:hover {
 
 .explanation-bar-fill.content { background: var(--color-content); }
 .explanation-bar-fill.collab { background: var(--color-collab); }
+.explanation-bar-fill.auth { background: var(--color-authority); }
 
 /* Graph view container */
 #graph-container {
