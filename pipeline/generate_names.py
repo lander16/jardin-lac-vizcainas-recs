@@ -30,7 +30,7 @@ LAST_NAMES = [
 ]
 
 def main():
-    csv_file = "synthetic_checkouts.csv"
+    csv_file = "data/koha_checkouts.csv"
     output_dir = "data"
     output_file = os.path.join(output_dir, "patron_names.json")
     

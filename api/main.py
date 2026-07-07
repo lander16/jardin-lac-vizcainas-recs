@@ -21,7 +21,7 @@ app.add_middleware(
 # Initialize recommender engine
 # Assume running from project root
 data_dir = "data"
-csv_path = "synthetic_checkouts.csv"
+csv_path = "data/koha_checkouts.csv"
 engine = RecommenderEngine(data_dir=data_dir, csv_path=csv_path)
 catalog_engine = CatalogEngine(data_dir="data/koha")
 

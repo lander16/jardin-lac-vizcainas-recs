@@ -4,7 +4,7 @@ import os
 
 def main():
     output_dir = "data"
-    csv_file = "synthetic_checkouts.csv"
+    csv_file = "data/koha_checkouts.csv"
     
     metadata_file = os.path.join(output_dir, "book_metadata.json")
     content_sim_file = os.path.join(output_dir, "content_similarities.json")

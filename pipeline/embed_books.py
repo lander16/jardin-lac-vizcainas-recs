@@ -5,7 +5,7 @@ import numpy as np
 from sentence_transformers import SentenceTransformer
 
 def main():
-    csv_file = "synthetic_checkouts.csv"
+    csv_file = "data/koha_checkouts.csv"
     output_dir = "data"
     
     if not os.path.exists(output_dir):

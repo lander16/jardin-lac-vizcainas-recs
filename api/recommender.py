@@ -3,7 +3,7 @@ import json
 import csv
 
 class RecommenderEngine:
-    def __init__(self, data_dir="data", csv_path="synthetic_checkouts.csv"):
+    def __init__(self, data_dir="data", csv_path="data/koha_checkouts.csv"):
         self.data_dir = data_dir
         self.csv_path = csv_path
         
