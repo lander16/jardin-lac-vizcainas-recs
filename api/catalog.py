@@ -204,7 +204,28 @@ class CatalogEngine:
         # Calculate new metrics
         total_authority_links = sum(len(b["authorities"]) for b in self.books.values())
         avg_auths_per_book = round(total_authority_links / len(self.books), 2) if self.books else 0
+        avg_books_per_auth = round(total_authority_links / len(self.authorities), 2) if self.authorities else 0
         pct_connected = round(((len(self.books) - len(orphaned_books)) / len(self.books)) * 100, 2) if self.books else 0
+
+        # Calculate type-specific statistics
+        type_stats = {}
+        auths_by_type = defaultdict(list)
+        for auth in self.authorities:
+            auths_by_type[auth["type"]].append(auth)
+
+        for t, auths in auths_by_type.items():
+            total_auths = len(auths)
+            total_links = sum(a["book_count"] for a in auths)
+            avg_books = round(total_links / total_auths, 2) if total_auths else 0
+            sorted_auths = sorted(auths, key=lambda a: -a["book_count"])
+            top_auth = sorted_auths[0] if sorted_auths else None
+            type_stats[t] = {
+                "total_authorities": total_auths,
+                "total_links": total_links,
+                "avg_books_per_authority": avg_books,
+                "top_authority_name": top_auth["name"] if top_auth else "",
+                "top_authority_count": top_auth["book_count"] if top_auth else 0
+            }
 
         # Connection weight distribution
         weight_dist = defaultdict(int)
@@ -220,9 +241,11 @@ class CatalogEngine:
             "avg_connections_per_book": round(avg_conns, 2),
             "total_authority_links": total_authority_links,
             "avg_authorities_per_book": avg_auths_per_book,
+            "avg_books_per_authority": avg_books_per_auth,
             "percentage_connected_catalog": pct_connected,
             "weight_distribution": dict(weight_dist),
             "top_authorities_stats": self.top_authorities[:10],
+            "type_stats": type_stats,
         })
 
         print(f"CatalogEngine loaded: {len(self.books)} books, {len(self.authorities)} authorities, {len(self.connections)} connections")

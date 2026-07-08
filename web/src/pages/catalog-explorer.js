@@ -33,7 +33,12 @@ function renderAuthorityBadge(auth) {
   const color = getAuthColor(auth.type);
   const icon = getAuthIcon(auth.type);
   return `
-    <span class="catalog-auth-badge" style="background:${color.bg}; border-color:${color.border}; color:${color.text};" title="${auth.type}: ${auth.name}">
+    <span class="catalog-auth-badge clickable-auth-badge" 
+          style="background:${color.bg}; border-color:${color.border}; color:${color.text}; cursor:pointer; transition:transform 0.15s ease;" 
+          data-id="${auth.authority_id || ''}" 
+          data-name="${auth.name}" 
+          data-type="${auth.type}" 
+          title="Ver conexiones de la autoridad '${auth.name}'">
       <i class="${icon}"></i> ${auth.name}
     </span>
   `;
@@ -48,6 +53,8 @@ export const CatalogExplorerPage = {
       api.getCatalogStats().catch(() => ({})),
       api.getCatalogBooks('', 100).catch(() => []),
     ]);
+
+    this.stats = stats;
 
     const totalBooks = stats.total_books || 0;
     const totalAuthorities = stats.total_authorities || 0;
@@ -102,48 +109,87 @@ export const CatalogExplorerPage = {
         <!-- Right Column: Stats and Insights -->
         <div style="display:flex; flex-direction:column; gap:2rem;">
           
-          <!-- Stats Summary Grid -->
-          <div style="display:grid; grid-template-columns:1fr; gap:1rem;">
-            <div class="glass-card stat-card" style="padding:1rem; display:flex; align-items:center; gap:0.75rem;">
-              <div class="stat-icon users" style="background:rgba(124,25,51,0.08); width:2.5rem; height:2.5rem; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
-                <i class="fa-solid fa-book" style="color:var(--color-accent); font-size:1.1rem;"></i>
+          <!-- Stats Summary Grid (Expanded 6-Card Dashboard) -->
+          <div>
+            <h3 style="font-family:var(--font-display); font-size:1.1rem; font-weight:700; margin:0 0 0.75rem 0;">
+              <i class="fa-solid fa-chart-line" style="color:var(--color-accent);"></i> Estadísticas del Acervo
+            </h3>
+            <div class="catalog-stats-grid">
+              <!-- Card 1: Books -->
+              <div class="glass-card stat-card" style="padding:0.75rem; display:flex; align-items:center; gap:0.5rem; min-width:0;" title="Cantidad total de registros bibliográficos en Koha">
+                <div style="background:rgba(124,25,51,0.06); width:2.2rem; height:2.2rem; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                  <i class="fa-solid fa-book" style="color:var(--color-accent); font-size:0.95rem;"></i>
+                </div>
+                <div style="min-width:0; flex:1;">
+                  <div class="stat-number" style="font-size:1.05rem; font-weight:700;">${totalBooks.toLocaleString()}</div>
+                  <div style="font-size:0.65rem; color:var(--text-secondary); text-overflow:ellipsis; overflow:hidden; white-space:nowrap;">Libros</div>
+                </div>
               </div>
-              <div>
-                <div class="stat-number" style="font-size:1.25rem; font-weight:700;">${totalBooks.toLocaleString()}</div>
-                <div class="stat-label" style="font-size:0.75rem; color:var(--text-secondary);">Obras Catalogadas</div>
+              <!-- Card 2: Authorities -->
+              <div class="glass-card stat-card" style="padding:0.75rem; display:flex; align-items:center; gap:0.5rem; min-width:0;" title="Descriptores únicos (temas, lugares, personas)">
+                <div style="background:rgba(82,117,94,0.06); width:2.2rem; height:2.2rem; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                  <i class="fa-solid fa-tags" style="color:var(--color-sage); font-size:0.95rem;"></i>
+                </div>
+                <div style="min-width:0; flex:1;">
+                  <div class="stat-number" style="font-size:1.05rem; font-weight:700;">${totalAuthorities.toLocaleString()}</div>
+                  <div style="font-size:0.65rem; color:var(--text-secondary); text-overflow:ellipsis; overflow:hidden; white-space:nowrap;">Etiquetas</div>
+                </div>
               </div>
-            </div>
-            <div class="glass-card stat-card" style="padding:1rem; display:flex; align-items:center; gap:0.75rem;">
-              <div class="stat-icon books" style="background:rgba(82,117,94,0.08); width:2.5rem; height:2.5rem; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
-                <i class="fa-solid fa-tags" style="color:var(--color-collab); font-size:1.1rem;"></i>
+              <!-- Card 3: Auth per Book -->
+              <div class="glass-card stat-card" style="padding:0.75rem; display:flex; align-items:center; gap:0.5rem; min-width:0;" title="Promedio de etiquetas/autoridades asignadas a cada libro">
+                <div style="background:rgba(86,105,122,0.06); width:2.2rem; height:2.2rem; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                  <i class="fa-solid fa-list-ol" style="color:var(--color-slate); font-size:0.95rem;"></i>
+                </div>
+                <div style="min-width:0; flex:1;">
+                  <div class="stat-number" style="font-size:1.05rem; font-weight:700;">${stats.avg_authorities_per_book || 0}</div>
+                  <div style="font-size:0.65rem; color:var(--text-secondary); text-overflow:ellipsis; overflow:hidden; white-space:nowrap;">Etiquetas/Libro</div>
+                </div>
               </div>
-              <div>
-                <div class="stat-number" style="font-size:1.25rem; font-weight:700;">${totalAuthorities.toLocaleString()}</div>
-                <div class="stat-label" style="font-size:0.75rem; color:var(--text-secondary);">Autoridades</div>
+              <!-- Card 4: Books per Auth -->
+              <div class="glass-card stat-card" style="padding:0.75rem; display:flex; align-items:center; gap:0.5rem; min-width:0;" title="Promedio de libros asociados a cada etiqueta">
+                <div style="background:rgba(128,90,150,0.06); width:2.2rem; height:2.2rem; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                  <i class="fa-solid fa-network-wired" style="color:#805a96; font-size:0.95rem;"></i>
+                </div>
+                <div style="min-width:0; flex:1;">
+                  <div class="stat-number" style="font-size:1.05rem; font-weight:700;">${stats.avg_books_per_authority || 0}</div>
+                  <div style="font-size:0.65rem; color:var(--text-secondary); text-overflow:ellipsis; overflow:hidden; white-space:nowrap;">Libros/Etiqueta</div>
+                </div>
               </div>
-            </div>
-            <div class="glass-card stat-card" style="padding:1rem; display:flex; align-items:center; gap:0.75rem;">
-              <div class="stat-icon checkouts" style="background:rgba(179,143,77,0.08); width:2.5rem; height:2.5rem; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
-                <i class="fa-solid fa-diagram-project" style="color:var(--color-gold); font-size:1.1rem;"></i>
+              <!-- Card 5: Connections -->
+              <div class="glass-card stat-card" style="padding:0.75rem; display:flex; align-items:center; gap:0.5rem; min-width:0;" title="Pares de libros con ≥3 autoridades compartidas">
+                <div style="background:rgba(179,143,77,0.06); width:2.2rem; height:2.2rem; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                  <i class="fa-solid fa-diagram-project" style="color:var(--color-gold); font-size:0.95rem;"></i>
+                </div>
+                <div style="min-width:0; flex:1;">
+                  <div class="stat-number" style="font-size:1.05rem; font-weight:700;">${totalConnections.toLocaleString()}</div>
+                  <div style="font-size:0.65rem; color:var(--text-secondary); text-overflow:ellipsis; overflow:hidden; white-space:nowrap;">Conexiones</div>
+                </div>
               </div>
-              <div>
-                <div class="stat-number" style="font-size:1.25rem; font-weight:700;">${totalConnections.toLocaleString()}</div>
-                <div class="stat-label" style="font-size:0.75rem; color:var(--text-secondary);">Conexiones</div>
+              <!-- Card 6: Connected Pct -->
+              <div class="glass-card stat-card" style="padding:0.75rem; display:flex; align-items:center; gap:0.5rem; min-width:0;" title="Porcentaje de obras catalogadas que tienen al menos una conexión en la red">
+                <div style="background:rgba(82,117,94,0.06); width:2.2rem; height:2.2rem; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                  <i class="fa-solid fa-percent" style="color:var(--color-sage); font-size:0.95rem;"></i>
+                </div>
+                <div style="min-width:0; flex:1;">
+                  <div class="stat-number" style="font-size:1.05rem; font-weight:700;">${stats.percentage_connected_catalog || 0}%</div>
+                  <div style="font-size:0.65rem; color:var(--text-secondary); text-overflow:ellipsis; overflow:hidden; white-space:nowrap;">Interconexión</div>
+                </div>
               </div>
             </div>
           </div>
 
           <!-- Authority types -->
           <div class="glass-card" style="padding:1.25rem;">
-            <h3 style="font-family:var(--font-display); font-size:1.1rem; font-weight:700; margin:0 0 1rem 0;">
+            <h3 style="font-family:var(--font-display); font-size:1.1rem; font-weight:700; margin:0 0 0.5rem 0;">
               <i class="fa-solid fa-layer-group" style="color:var(--color-accent);"></i> Tipos de Autoridades
             </h3>
+            <p style="font-size:0.75rem; color:var(--text-secondary); margin:0 0 1rem 0;">Haz clic en cualquier tipo para explorar estadísticas avanzadas y descriptores.</p>
             <div class="catalog-type-grid" style="display:flex; flex-direction:column; gap:0.5rem;">
               ${Object.entries(typeCounts).sort((a, b) => b[1] - a[1]).map(([type, count]) => {
                 const color = getAuthColor(type);
                 const icon = getAuthIcon(type);
                 return `
-                  <div class="catalog-type-chip" style="background:${color.bg}; border:1px solid ${color.border}; display:flex; align-items:center; justify-content:space-between; padding:0.4rem 0.6rem; border-radius:4px;">
+                  <div class="catalog-type-chip" data-type="${type}" style="background:${color.bg}; border:1px solid ${color.border}; display:flex; align-items:center; justify-content:space-between; padding:0.4rem 0.6rem; border-radius:4px;" title="Explorar autoridades de tipo '${type}'">
                     <span style="display:flex; align-items:center; gap:0.4rem; font-size:0.8rem; font-weight:600; color:${color.text};">
                       <i class="${icon}" style="color:${color.text};"></i>
                       ${type}
@@ -275,6 +321,238 @@ export const CatalogExplorerPage = {
           }
         }, 350);
       });
+    }
+
+    // Dynamic Event Delegation for clickable badges and chips (resists dynamic re-renders!)
+    document.addEventListener('click', (e) => {
+      // 1. Click on authority type chip in sidebar
+      const typeChip = e.target.closest('.catalog-type-chip');
+      if (typeChip) {
+        const type = typeChip.getAttribute('data-type');
+        if (type) {
+          this.openAuthorityInspector(type);
+        }
+        return;
+      }
+
+      // 2. Click on any individual authority badge throughout the catalog search results
+      const authBadge = e.target.closest('.clickable-auth-badge');
+      if (authBadge) {
+        const authId = authBadge.getAttribute('data-id');
+        const authName = authBadge.getAttribute('data-name');
+        const authType = authBadge.getAttribute('data-type');
+        if (authType) {
+          this.openAuthorityInspector(authType, { id: authId, name: authName });
+        }
+        return;
+      }
+    });
+  },
+
+  async openAuthorityInspector(type, selectedAuth = null) {
+    let modal = document.getElementById('authority-inspector-modal');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'authority-inspector-modal';
+      modal.className = 'inspector-modal-overlay';
+      document.body.appendChild(modal);
+    }
+
+    const color = getAuthColor(type);
+    const icon = getAuthIcon(type);
+    const typeStats = (this.stats && this.stats.type_stats && this.stats.type_stats[type]) || {};
+
+    modal.innerHTML = `
+      <div class="inspector-modal-card">
+        <!-- Modal Header -->
+        <div style="background:${color.bg}; border-bottom:1px solid ${color.border}; padding:1rem 1.25rem; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:1rem;">
+          <div style="display:flex; align-items:center; gap:0.75rem;">
+            <div style="width:2.5rem; height:2.5rem; border-radius:50%; background:white; border:1px solid ${color.border}; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+              <i class="${icon}" style="color:${color.text}; font-size:1.25rem;"></i>
+            </div>
+            <div>
+              <h2 style="font-family:var(--font-display); font-size:1.25rem; font-weight:700; margin:0; color:var(--text-primary);">${type}</h2>
+              <p style="font-size:0.72rem; color:var(--text-secondary); margin:2px 0 0 0;">Análisis y desglose de descriptores catalogados en Koha</p>
+            </div>
+          </div>
+          <div style="display:flex; gap:1.25rem; flex-wrap:wrap; font-size:0.78rem;">
+            <div>
+              <div style="font-size:0.68rem; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.02em;">Etiquetas Únicas</div>
+              <div style="font-size:1.05rem; font-weight:700; color:var(--text-primary);">${(typeStats.total_authorities || 0).toLocaleString()}</div>
+            </div>
+            <div>
+              <div style="font-size:0.68rem; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.02em;">Promedio de Libros</div>
+              <div style="font-size:1.05rem; font-weight:700; color:var(--text-primary);">${typeStats.avg_books_per_authority || 0}</div>
+            </div>
+            <div style="max-width: 250px;">
+              <div style="font-size:0.68rem; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.02em;">Etiqueta Más Común</div>
+              <div style="font-size:1.05rem; font-weight:700; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${typeStats.top_authority_name || ''}">
+                ${typeStats.top_authority_name || 'Ninguna'}
+                <span style="font-size:0.75rem; font-weight:normal; color:var(--text-secondary);">(${typeStats.top_authority_count || 0} lib.)</span>
+              </div>
+            </div>
+          </div>
+          <button id="close-inspector-modal" style="background:none; border:none; color:var(--text-secondary); font-size:1.75rem; cursor:pointer; padding:0.25rem 0.5rem; line-height:1; transition:color 0.2s;" onmouseover="this.style.color='var(--color-accent)'" onmouseout="this.style.color='var(--text-secondary)'">&times;</button>
+        </div>
+
+        <!-- Modal Body Layout -->
+        <div style="display:grid; grid-template-columns:1fr 1.2fr; height:calc(100% - 68px); overflow:hidden;" class="modal-body-layout">
+          <!-- Left Column: Search & Scrollable Tags list -->
+          <div style="border-right:1px solid var(--border-light); display:flex; flex-direction:column; background:var(--bg-primary); padding:1rem; min-width:0; overflow:hidden;">
+            <div style="position:relative; margin-bottom:0.75rem; display:flex; align-items:center;">
+              <i class="fa-solid fa-magnifying-glass" style="position:absolute; left:0.65rem; color:var(--text-muted); font-size:0.8rem; pointer-events:none;"></i>
+              <input type="text" id="inspector-tag-search" placeholder="Filtrar descriptores de este tipo..." 
+                     style="width:100%; padding:0.4rem 0.5rem 0.4rem 1.8rem; font-size:0.82rem; border-radius:4px; border:1px solid var(--border-light); background:white; color:var(--text-primary); outline:none;">
+            </div>
+            <div id="inspector-tags-list" style="flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:0.3rem; padding-right:0.2rem;">
+              <div style="text-align:center; padding:2rem;"><i class="fa fa-spinner fa-spin" style="color:var(--color-accent)"></i> Cargando...</div>
+            </div>
+          </div>
+
+          <!-- Right Column: Detail & Linked Books list -->
+          <div id="inspector-books-panel" style="display:flex; flex-direction:column; padding:1.25rem; background:white; overflow-y:auto; min-width:0;">
+            <div style="text-align:center; padding:5rem 2rem; color:var(--text-secondary); margin:auto 0;">
+              <i class="${icon}" style="font-size:3rem; color:var(--text-muted); margin-bottom:1rem; opacity:0.3;"></i>
+              <p style="font-size:1.05rem; font-weight:600;">Selecciona un descriptor de la izquierda</p>
+              <p style="font-size:0.8rem; color:var(--text-muted); margin-top:0.25rem;">Verás el listado de obras del acervo que comparten esta autoridad catalogada.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    // Activate modal (fade in)
+    setTimeout(() => modal.classList.add('active'), 10);
+
+    const closeBtn = modal.querySelector('#close-inspector-modal');
+    const searchInput = modal.querySelector('#inspector-tag-search');
+    const tagsListContainer = modal.querySelector('#inspector-tags-list');
+    const booksPanel = modal.querySelector('#inspector-books-panel');
+
+    const closeModal = () => {
+      modal.classList.remove('active');
+    };
+
+    closeBtn.addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) closeModal();
+    });
+
+    try {
+      // Fetch the list of authorities of this type
+      const authorities = await api.getCatalogAuthorities(type, 200);
+
+      const renderTagsList = (list) => {
+        if (!list.length) {
+          tagsListContainer.innerHTML = '<div style="text-align:center; padding:2rem; color:var(--text-secondary); font-size:0.8rem;">No se encontraron etiquetas.</div>';
+          return;
+        }
+
+        tagsListContainer.innerHTML = list.map(auth => {
+          const isSelected = selectedAuth && selectedAuth.id === auth.authority_id;
+          return `
+            <div class="tag-list-item ${isSelected ? 'active' : ''}" data-id="${auth.authority_id}" style="display:flex; align-items:center; justify-content:space-between; padding:0.45rem 0.6rem; border-radius:4px; font-size:0.78rem;">
+              <span class="tag-name" style="font-weight:600; text-overflow:ellipsis; overflow:hidden; white-space:nowrap; flex:1; min-width:0; padding-right:0.5rem;" title="${auth.name}">${auth.name}</span>
+              <span class="tag-count" style="font-size:0.7rem; font-weight:700; background:rgba(0,0,0,0.05); color:var(--text-secondary); padding:0.05rem 0.35rem; border-radius:10px;">${auth.book_count} lib.</span>
+            </div>
+          `;
+        }).join('');
+      };
+
+      const selectTag = async (tagElement, authId, authName) => {
+        // Highlight active tag
+        modal.querySelectorAll('.tag-list-item').forEach(el => el.classList.remove('active'));
+        tagElement.classList.add('active');
+
+        booksPanel.innerHTML = '<div style="text-align:center; padding:5rem 2rem;"><i class="fa fa-spinner fa-spin fa-2x" style="color:var(--color-accent)"></i><p style="font-size:0.85rem; color:var(--text-secondary); margin-top:0.5rem;">Cargando obras asociadas...</p></div>';
+
+        try {
+          const detail = await api.getCatalogAuthority(authId);
+          if (!detail || !detail.books || !detail.books.length) {
+            booksPanel.innerHTML = '<div style="text-align:center; padding:3rem 2rem; color:var(--text-secondary); font-size:0.88rem;">No hay libros asociados a este descriptor.</div>';
+            return;
+          }
+
+          booksPanel.innerHTML = `
+            <div style="margin-bottom:1.25rem; border-bottom:1px solid var(--border-light); padding-bottom:0.75rem;">
+              <div style="font-size:0.75rem; text-transform:uppercase; letter-spacing:0.05em; color:${color.text}; font-weight:700; margin-bottom:0.25rem;">
+                <i class="${icon}"></i> ${type}
+              </div>
+              <h3 style="font-family:var(--font-display); font-size:1.25rem; font-weight:700; color:var(--text-primary); margin:0 0 0.5rem 0;">${detail.name}</h3>
+              <p style="font-size:0.8rem; color:var(--text-secondary); margin:0;">
+                Esta etiqueta agrupa un total de <strong>${detail.book_count} obras</strong> en el catálogo del Colegio de las Vizcaínas.
+              </p>
+            </div>
+            
+            <div style="display:flex; flex-direction:column; gap:0.5rem;">
+              ${detail.books.map(book => `
+                <div style="display:flex; align-items:center; justify-content:space-between; padding:0.6rem 0.75rem; border:1px solid var(--border-light); border-radius:6px; background:var(--bg-primary); gap:1rem;">
+                  <div style="min-width:0; flex:1;">
+                    <a href="#/catalog/graph/${book.biblio_id}" class="book-title-link" style="font-family:var(--font-display); font-size:0.95rem; font-weight:700; color:var(--text-primary); text-decoration:none; display:block; margin-bottom:0.15rem;">${book.title}</a>
+                    ${book.author ? `<div style="font-size:0.75rem; color:var(--text-secondary);"><i class="fa-solid fa-feather"></i> ${book.author}</div>` : ''}
+                  </div>
+                  <a href="#/catalog/graph/${book.biblio_id}" class="btn btn-outline book-graph-link" style="font-size:0.7rem; padding:0.25rem 0.55rem; white-space:nowrap; flex-shrink:0;">
+                    <i class="fa-solid fa-diagram-project"></i> Ver Grafo
+                  </a>
+                </div>
+              `).join('')}
+            </div>
+          `;
+
+          // Close modal when navigating to a book detail or graph
+          booksPanel.querySelectorAll('.book-title-link, .book-graph-link').forEach(link => {
+            link.addEventListener('click', closeModal);
+          });
+
+        } catch (err) {
+          booksPanel.innerHTML = `<div style="text-align:center; padding:3rem 2rem; color:var(--color-accent); font-size:0.88rem;">Error al cargar detalles: ${err.message}</div>`;
+        }
+      };
+
+      // Set up click listeners for tag list items (delegated)
+      tagsListContainer.addEventListener('click', (e) => {
+        const item = e.target.closest('.tag-list-item');
+        if (item) {
+          const authId = item.getAttribute('data-id');
+          const authName = item.querySelector('.tag-name').textContent;
+          selectTag(item, authId, authName);
+        }
+      });
+
+      // Render initial tags list
+      renderTagsList(authorities);
+
+      // Set up filter input search behavior
+      searchInput.addEventListener('input', () => {
+        const query = searchInput.value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const filtered = authorities.filter(a => {
+          const normName = a.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+          return normName.includes(query);
+        });
+        renderTagsList(filtered);
+      });
+
+      // If a tag was pre-selected (e.g. from clicking a badge in search results)
+      if (selectedAuth && selectedAuth.id) {
+        // Wait briefly for elements to render
+        setTimeout(() => {
+          const targetItem = tagsListContainer.querySelector(`.tag-list-item[data-id="${selectedAuth.id}"]`);
+          if (targetItem) {
+            targetItem.scrollIntoView({ block: 'center', behavior: 'smooth' });
+            selectTag(targetItem, selectedAuth.id, selectedAuth.name);
+          } else {
+            // If the pre-selected tag is not in the first 200 list, fetch it directly
+            const tempItem = document.createElement('div');
+            tempItem.className = 'tag-list-item active';
+            tempItem.setAttribute('data-id', selectedAuth.id);
+            tempItem.innerHTML = `<span class="tag-name">${selectedAuth.name}</span>`;
+            selectTag(tempItem, selectedAuth.id, selectedAuth.name);
+          }
+        }, 50);
+      }
+
+    } catch (err) {
+      tagsListContainer.innerHTML = `<div style="text-align:center; padding:2rem; color:var(--color-accent); font-size:0.8rem;">Error al cargar descriptores: ${err.message}</div>`;
     }
   },
 };

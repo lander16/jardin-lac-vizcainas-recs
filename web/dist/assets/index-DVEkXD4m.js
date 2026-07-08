@@ -596,10 +596,15 @@
               </a>
             </div>
           `}}catch(e){m.innerHTML=`<div style="text-align:center; padding:2rem; color:var(--color-accent);">Error al cargar detalle: ${e.message}</div>`}}),c.on(`tick`,()=>{u.attr(`x1`,e=>e.source.x).attr(`y1`,e=>e.source.y).attr(`x2`,e=>e.target.x).attr(`y2`,e=>e.target.y),d.attr(`cx`,e=>e.x).attr(`cy`,e=>e.y),f.attr(`x`,e=>e.x).attr(`y`,e=>e.y)});function h(e,t){e.active||c.alphaTarget(.3).restart(),t.fx=t.x,t.fy=t.y}function g(e,t){t.fx=e.x,t.fy=e.y}function _(e,t){e.active||c.alphaTarget(0),t.fx=null,t.fy=null}}},ja={Autor:{bg:`rgba(124, 25, 51, 0.08)`,border:`rgba(124, 25, 51, 0.25)`,text:`#7c1933`},Tema:{bg:`rgba(82, 117, 94, 0.08)`,border:`rgba(82, 117, 94, 0.25)`,text:`#52755e`},"Tema (Persona)":{bg:`rgba(82, 117, 94, 0.08)`,border:`rgba(82, 117, 94, 0.25)`,text:`#52755e`},"Tema (Institución)":{bg:`rgba(82, 117, 94, 0.08)`,border:`rgba(82, 117, 94, 0.25)`,text:`#52755e`},Lugar:{bg:`rgba(86, 105, 122, 0.08)`,border:`rgba(86, 105, 122, 0.25)`,text:`#56697a`},"Institución / Organización":{bg:`rgba(179, 143, 77, 0.08)`,border:`rgba(179, 143, 77, 0.25)`,text:`#b38f4d`},"Título Uniforme":{bg:`rgba(128, 90, 150, 0.08)`,border:`rgba(128, 90, 150, 0.25)`,text:`#805a96`}},Ma={Autor:`fa-solid fa-feather`,Tema:`fa-solid fa-tags`,"Tema (Persona)":`fa-solid fa-user-tag`,"Tema (Institución)":`fa-solid fa-building-flag`,Lugar:`fa-solid fa-map-pin`,"Institución / Organización":`fa-solid fa-building`,"Título Uniforme":`fa-solid fa-bookmark`};function Na(e){return ja[e]||ja.Tema}function Pa(e){return Ma[e]||`fa-solid fa-tag`}function Fa(e){let t=Na(e.type),n=Pa(e.type);return`
-    <span class="catalog-auth-badge" style="background:${t.bg}; border-color:${t.border}; color:${t.text};" title="${e.type}: ${e.name}">
+    <span class="catalog-auth-badge clickable-auth-badge" 
+          style="background:${t.bg}; border-color:${t.border}; color:${t.text}; cursor:pointer; transition:transform 0.15s ease;" 
+          data-id="${e.authority_id||``}" 
+          data-name="${e.name}" 
+          data-type="${e.type}" 
+          title="Ver conexiones de la autoridad '${e.name}'">
       <i class="${n}"></i> ${e.name}
     </span>
-  `}var Ia={path:`/catalog`,navKey:`catalog`,async render(e){let[t,n]=await Promise.all([r.getCatalogStats().catch(()=>({})),r.getCatalogBooks(``,100).catch(()=>[])]),i=t.total_books||0,a=t.total_authorities||0,o=t.total_connections||0,s=t.type_counts||{};e.innerHTML=`
+  `}var Ia={path:`/catalog`,navKey:`catalog`,async render(e){let[t,n]=await Promise.all([r.getCatalogStats().catch(()=>({})),r.getCatalogBooks(``,100).catch(()=>[])]);this.stats=t;let i=t.total_books||0,a=t.total_authorities||0,o=t.total_connections||0,s=t.type_counts||{};e.innerHTML=`
       <section class="hero">
         <h1>Catálogo — Jardín LAC Vizcaínas</h1>
         <p>Explora el acervo real de la biblioteca y descubre cómo los libros se conectan a través de sus autoridades catalogadas en Koha.</p>
@@ -647,45 +652,84 @@
         <!-- Right Column: Stats and Insights -->
         <div style="display:flex; flex-direction:column; gap:2rem;">
           
-          <!-- Stats Summary Grid -->
-          <div style="display:grid; grid-template-columns:1fr; gap:1rem;">
-            <div class="glass-card stat-card" style="padding:1rem; display:flex; align-items:center; gap:0.75rem;">
-              <div class="stat-icon users" style="background:rgba(124,25,51,0.08); width:2.5rem; height:2.5rem; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
-                <i class="fa-solid fa-book" style="color:var(--color-accent); font-size:1.1rem;"></i>
+          <!-- Stats Summary Grid (Expanded 6-Card Dashboard) -->
+          <div>
+            <h3 style="font-family:var(--font-display); font-size:1.1rem; font-weight:700; margin:0 0 0.75rem 0;">
+              <i class="fa-solid fa-chart-line" style="color:var(--color-accent);"></i> Estadísticas del Acervo
+            </h3>
+            <div class="catalog-stats-grid">
+              <!-- Card 1: Books -->
+              <div class="glass-card stat-card" style="padding:0.75rem; display:flex; align-items:center; gap:0.5rem; min-width:0;" title="Cantidad total de registros bibliográficos en Koha">
+                <div style="background:rgba(124,25,51,0.06); width:2.2rem; height:2.2rem; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                  <i class="fa-solid fa-book" style="color:var(--color-accent); font-size:0.95rem;"></i>
+                </div>
+                <div style="min-width:0; flex:1;">
+                  <div class="stat-number" style="font-size:1.05rem; font-weight:700;">${i.toLocaleString()}</div>
+                  <div style="font-size:0.65rem; color:var(--text-secondary); text-overflow:ellipsis; overflow:hidden; white-space:nowrap;">Libros</div>
+                </div>
               </div>
-              <div>
-                <div class="stat-number" style="font-size:1.25rem; font-weight:700;">${i.toLocaleString()}</div>
-                <div class="stat-label" style="font-size:0.75rem; color:var(--text-secondary);">Obras Catalogadas</div>
+              <!-- Card 2: Authorities -->
+              <div class="glass-card stat-card" style="padding:0.75rem; display:flex; align-items:center; gap:0.5rem; min-width:0;" title="Descriptores únicos (temas, lugares, personas)">
+                <div style="background:rgba(82,117,94,0.06); width:2.2rem; height:2.2rem; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                  <i class="fa-solid fa-tags" style="color:var(--color-sage); font-size:0.95rem;"></i>
+                </div>
+                <div style="min-width:0; flex:1;">
+                  <div class="stat-number" style="font-size:1.05rem; font-weight:700;">${a.toLocaleString()}</div>
+                  <div style="font-size:0.65rem; color:var(--text-secondary); text-overflow:ellipsis; overflow:hidden; white-space:nowrap;">Etiquetas</div>
+                </div>
               </div>
-            </div>
-            <div class="glass-card stat-card" style="padding:1rem; display:flex; align-items:center; gap:0.75rem;">
-              <div class="stat-icon books" style="background:rgba(82,117,94,0.08); width:2.5rem; height:2.5rem; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
-                <i class="fa-solid fa-tags" style="color:var(--color-collab); font-size:1.1rem;"></i>
+              <!-- Card 3: Auth per Book -->
+              <div class="glass-card stat-card" style="padding:0.75rem; display:flex; align-items:center; gap:0.5rem; min-width:0;" title="Promedio de etiquetas/autoridades asignadas a cada libro">
+                <div style="background:rgba(86,105,122,0.06); width:2.2rem; height:2.2rem; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                  <i class="fa-solid fa-list-ol" style="color:var(--color-slate); font-size:0.95rem;"></i>
+                </div>
+                <div style="min-width:0; flex:1;">
+                  <div class="stat-number" style="font-size:1.05rem; font-weight:700;">${t.avg_authorities_per_book||0}</div>
+                  <div style="font-size:0.65rem; color:var(--text-secondary); text-overflow:ellipsis; overflow:hidden; white-space:nowrap;">Etiquetas/Libro</div>
+                </div>
               </div>
-              <div>
-                <div class="stat-number" style="font-size:1.25rem; font-weight:700;">${a.toLocaleString()}</div>
-                <div class="stat-label" style="font-size:0.75rem; color:var(--text-secondary);">Autoridades</div>
+              <!-- Card 4: Books per Auth -->
+              <div class="glass-card stat-card" style="padding:0.75rem; display:flex; align-items:center; gap:0.5rem; min-width:0;" title="Promedio de libros asociados a cada etiqueta">
+                <div style="background:rgba(128,90,150,0.06); width:2.2rem; height:2.2rem; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                  <i class="fa-solid fa-network-wired" style="color:#805a96; font-size:0.95rem;"></i>
+                </div>
+                <div style="min-width:0; flex:1;">
+                  <div class="stat-number" style="font-size:1.05rem; font-weight:700;">${t.avg_books_per_authority||0}</div>
+                  <div style="font-size:0.65rem; color:var(--text-secondary); text-overflow:ellipsis; overflow:hidden; white-space:nowrap;">Libros/Etiqueta</div>
+                </div>
               </div>
-            </div>
-            <div class="glass-card stat-card" style="padding:1rem; display:flex; align-items:center; gap:0.75rem;">
-              <div class="stat-icon checkouts" style="background:rgba(179,143,77,0.08); width:2.5rem; height:2.5rem; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
-                <i class="fa-solid fa-diagram-project" style="color:var(--color-gold); font-size:1.1rem;"></i>
+              <!-- Card 5: Connections -->
+              <div class="glass-card stat-card" style="padding:0.75rem; display:flex; align-items:center; gap:0.5rem; min-width:0;" title="Pares de libros con ≥3 autoridades compartidas">
+                <div style="background:rgba(179,143,77,0.06); width:2.2rem; height:2.2rem; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                  <i class="fa-solid fa-diagram-project" style="color:var(--color-gold); font-size:0.95rem;"></i>
+                </div>
+                <div style="min-width:0; flex:1;">
+                  <div class="stat-number" style="font-size:1.05rem; font-weight:700;">${o.toLocaleString()}</div>
+                  <div style="font-size:0.65rem; color:var(--text-secondary); text-overflow:ellipsis; overflow:hidden; white-space:nowrap;">Conexiones</div>
+                </div>
               </div>
-              <div>
-                <div class="stat-number" style="font-size:1.25rem; font-weight:700;">${o.toLocaleString()}</div>
-                <div class="stat-label" style="font-size:0.75rem; color:var(--text-secondary);">Conexiones</div>
+              <!-- Card 6: Connected Pct -->
+              <div class="glass-card stat-card" style="padding:0.75rem; display:flex; align-items:center; gap:0.5rem; min-width:0;" title="Porcentaje de obras catalogadas que tienen al menos una conexión en la red">
+                <div style="background:rgba(82,117,94,0.06); width:2.2rem; height:2.2rem; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                  <i class="fa-solid fa-percent" style="color:var(--color-sage); font-size:0.95rem;"></i>
+                </div>
+                <div style="min-width:0; flex:1;">
+                  <div class="stat-number" style="font-size:1.05rem; font-weight:700;">${t.percentage_connected_catalog||0}%</div>
+                  <div style="font-size:0.65rem; color:var(--text-secondary); text-overflow:ellipsis; overflow:hidden; white-space:nowrap;">Interconexión</div>
+                </div>
               </div>
             </div>
           </div>
 
           <!-- Authority types -->
           <div class="glass-card" style="padding:1.25rem;">
-            <h3 style="font-family:var(--font-display); font-size:1.1rem; font-weight:700; margin:0 0 1rem 0;">
+            <h3 style="font-family:var(--font-display); font-size:1.1rem; font-weight:700; margin:0 0 0.5rem 0;">
               <i class="fa-solid fa-layer-group" style="color:var(--color-accent);"></i> Tipos de Autoridades
             </h3>
+            <p style="font-size:0.75rem; color:var(--text-secondary); margin:0 0 1rem 0;">Haz clic en cualquier tipo para explorar estadísticas avanzadas y descriptores.</p>
             <div class="catalog-type-grid" style="display:flex; flex-direction:column; gap:0.5rem;">
               ${Object.entries(s).sort((e,t)=>t[1]-e[1]).map(([e,t])=>{let n=Na(e),r=Pa(e);return`
-                  <div class="catalog-type-chip" style="background:${n.bg}; border:1px solid ${n.border}; display:flex; align-items:center; justify-content:space-between; padding:0.4rem 0.6rem; border-radius:4px;">
+                  <div class="catalog-type-chip" data-type="${e}" style="background:${n.bg}; border:1px solid ${n.border}; display:flex; align-items:center; justify-content:space-between; padding:0.4rem 0.6rem; border-radius:4px;" title="Explorar autoridades de tipo '${e}'">
                     <span style="display:flex; align-items:center; gap:0.4rem; font-size:0.8rem; font-weight:600; color:${n.text};">
                       <i class="${r}" style="color:${n.text};"></i>
                       ${e}
@@ -760,7 +804,93 @@
           <p style="font-size:1.05rem; font-weight:500;">No se encontraron obras con los términos especificados.</p>
           <p style="font-size:0.85rem; color:var(--text-muted); margin-top:0.25rem;">Intenta buscar por palabras clave o revisa la ortografía.</p>
         </div>
-      `},bindEvents(){let e=document.getElementById(`catalog-search`),t=document.getElementById(`catalog-books-list`),n;e&&(e.addEventListener(`focus`,()=>{e.style.borderColor=`var(--color-accent)`,e.style.boxShadow=`0 4px 20px rgba(124, 25, 51, 0.08)`}),e.addEventListener(`blur`,()=>{e.style.borderColor=`var(--border-light)`,e.style.boxShadow=`0 4px 20px rgba(0, 0, 0, 0.02)`}),e.addEventListener(`input`,()=>{clearTimeout(n),n=setTimeout(async()=>{let n=e.value.trim();t.innerHTML=`<div style="text-align:center; padding:2rem;"><i class="fa fa-spinner fa-spin fa-2x" style="color:var(--color-accent)"></i></div>`;try{let e=await r.getCatalogBooks(n,100);t.innerHTML=this.renderBooksList(e)}catch(e){t.innerHTML=`<div style="text-align:center; padding:2rem; color:var(--color-accent);">Error al buscar: ${e.message}</div>`}},350)}))}},La={Autor:`#7c1933`,Tema:`#52755e`,"Tema (Persona)":`#52755e`,"Tema (Institución)":`#52755e`,Lugar:`#56697a`,"Institución / Organización":`#b38f4d`,"Título Uniforme":`#805a96`},Ra={Autor:`fa-solid fa-feather`,Tema:`fa-solid fa-tags`,"Tema (Persona)":`fa-solid fa-user-tag`,"Tema (Institución)":`fa-solid fa-building-flag`,Lugar:`fa-solid fa-map-pin`,"Institución / Organización":`fa-solid fa-building`,"Título Uniforme":`fa-solid fa-bookmark`};function za(e){return e.type===`target_book`?`#7c1933`:e.type===`connected_book`?`#56697a`:e.type===`authority`&&La[e.authority_type]||`#888`}function Ba(e){return e.type===`target_book`?18:e.type===`authority`?Math.min(8+(e.book_count||1)*1.5,16):e.type===`connected_book`?10:8}var Va=[i,a,o,Aa,Ia,{path:`/catalog/graph/:id`,navKey:`catalog`,async render(e,t){let n=t.id,[i,a]=await Promise.all([r.getCatalogBook(n),r.getCatalogGraph(n,15)]);e.innerHTML=`
+      `},bindEvents(){let e=document.getElementById(`catalog-search`),t=document.getElementById(`catalog-books-list`),n;e&&(e.addEventListener(`focus`,()=>{e.style.borderColor=`var(--color-accent)`,e.style.boxShadow=`0 4px 20px rgba(124, 25, 51, 0.08)`}),e.addEventListener(`blur`,()=>{e.style.borderColor=`var(--border-light)`,e.style.boxShadow=`0 4px 20px rgba(0, 0, 0, 0.02)`}),e.addEventListener(`input`,()=>{clearTimeout(n),n=setTimeout(async()=>{let n=e.value.trim();t.innerHTML=`<div style="text-align:center; padding:2rem;"><i class="fa fa-spinner fa-spin fa-2x" style="color:var(--color-accent)"></i></div>`;try{let e=await r.getCatalogBooks(n,100);t.innerHTML=this.renderBooksList(e)}catch(e){t.innerHTML=`<div style="text-align:center; padding:2rem; color:var(--color-accent);">Error al buscar: ${e.message}</div>`}},350)})),document.addEventListener(`click`,e=>{let t=e.target.closest(`.catalog-type-chip`);if(t){let e=t.getAttribute(`data-type`);e&&this.openAuthorityInspector(e);return}let n=e.target.closest(`.clickable-auth-badge`);if(n){let e=n.getAttribute(`data-id`),t=n.getAttribute(`data-name`),r=n.getAttribute(`data-type`);r&&this.openAuthorityInspector(r,{id:e,name:t});return}})},async openAuthorityInspector(e,t=null){let n=document.getElementById(`authority-inspector-modal`);n||(n=document.createElement(`div`),n.id=`authority-inspector-modal`,n.className=`inspector-modal-overlay`,document.body.appendChild(n));let i=Na(e),a=Pa(e),o=this.stats&&this.stats.type_stats&&this.stats.type_stats[e]||{};n.innerHTML=`
+      <div class="inspector-modal-card">
+        <!-- Modal Header -->
+        <div style="background:${i.bg}; border-bottom:1px solid ${i.border}; padding:1rem 1.25rem; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:1rem;">
+          <div style="display:flex; align-items:center; gap:0.75rem;">
+            <div style="width:2.5rem; height:2.5rem; border-radius:50%; background:white; border:1px solid ${i.border}; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+              <i class="${a}" style="color:${i.text}; font-size:1.25rem;"></i>
+            </div>
+            <div>
+              <h2 style="font-family:var(--font-display); font-size:1.25rem; font-weight:700; margin:0; color:var(--text-primary);">${e}</h2>
+              <p style="font-size:0.72rem; color:var(--text-secondary); margin:2px 0 0 0;">Análisis y desglose de descriptores catalogados en Koha</p>
+            </div>
+          </div>
+          <div style="display:flex; gap:1.25rem; flex-wrap:wrap; font-size:0.78rem;">
+            <div>
+              <div style="font-size:0.68rem; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.02em;">Etiquetas Únicas</div>
+              <div style="font-size:1.05rem; font-weight:700; color:var(--text-primary);">${(o.total_authorities||0).toLocaleString()}</div>
+            </div>
+            <div>
+              <div style="font-size:0.68rem; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.02em;">Promedio de Libros</div>
+              <div style="font-size:1.05rem; font-weight:700; color:var(--text-primary);">${o.avg_books_per_authority||0}</div>
+            </div>
+            <div style="max-width: 250px;">
+              <div style="font-size:0.68rem; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.02em;">Etiqueta Más Común</div>
+              <div style="font-size:1.05rem; font-weight:700; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${o.top_authority_name||``}">
+                ${o.top_authority_name||`Ninguna`}
+                <span style="font-size:0.75rem; font-weight:normal; color:var(--text-secondary);">(${o.top_authority_count||0} lib.)</span>
+              </div>
+            </div>
+          </div>
+          <button id="close-inspector-modal" style="background:none; border:none; color:var(--text-secondary); font-size:1.75rem; cursor:pointer; padding:0.25rem 0.5rem; line-height:1; transition:color 0.2s;" onmouseover="this.style.color='var(--color-accent)'" onmouseout="this.style.color='var(--text-secondary)'">&times;</button>
+        </div>
+
+        <!-- Modal Body Layout -->
+        <div style="display:grid; grid-template-columns:1fr 1.2fr; height:calc(100% - 68px); overflow:hidden;" class="modal-body-layout">
+          <!-- Left Column: Search & Scrollable Tags list -->
+          <div style="border-right:1px solid var(--border-light); display:flex; flex-direction:column; background:var(--bg-primary); padding:1rem; min-width:0; overflow:hidden;">
+            <div style="position:relative; margin-bottom:0.75rem; display:flex; align-items:center;">
+              <i class="fa-solid fa-magnifying-glass" style="position:absolute; left:0.65rem; color:var(--text-muted); font-size:0.8rem; pointer-events:none;"></i>
+              <input type="text" id="inspector-tag-search" placeholder="Filtrar descriptores de este tipo..." 
+                     style="width:100%; padding:0.4rem 0.5rem 0.4rem 1.8rem; font-size:0.82rem; border-radius:4px; border:1px solid var(--border-light); background:white; color:var(--text-primary); outline:none;">
+            </div>
+            <div id="inspector-tags-list" style="flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:0.3rem; padding-right:0.2rem;">
+              <div style="text-align:center; padding:2rem;"><i class="fa fa-spinner fa-spin" style="color:var(--color-accent)"></i> Cargando...</div>
+            </div>
+          </div>
+
+          <!-- Right Column: Detail & Linked Books list -->
+          <div id="inspector-books-panel" style="display:flex; flex-direction:column; padding:1.25rem; background:white; overflow-y:auto; min-width:0;">
+            <div style="text-align:center; padding:5rem 2rem; color:var(--text-secondary); margin:auto 0;">
+              <i class="${a}" style="font-size:3rem; color:var(--text-muted); margin-bottom:1rem; opacity:0.3;"></i>
+              <p style="font-size:1.05rem; font-weight:600;">Selecciona un descriptor de la izquierda</p>
+              <p style="font-size:0.8rem; color:var(--text-muted); margin-top:0.25rem;">Verás el listado de obras del acervo que comparten esta autoridad catalogada.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    `,setTimeout(()=>n.classList.add(`active`),10);let s=n.querySelector(`#close-inspector-modal`),c=n.querySelector(`#inspector-tag-search`),l=n.querySelector(`#inspector-tags-list`),u=n.querySelector(`#inspector-books-panel`),d=()=>{n.classList.remove(`active`)};s.addEventListener(`click`,d),n.addEventListener(`click`,e=>{e.target===n&&d()});try{let o=await r.getCatalogAuthorities(e,200),s=e=>{if(!e.length){l.innerHTML=`<div style="text-align:center; padding:2rem; color:var(--text-secondary); font-size:0.8rem;">No se encontraron etiquetas.</div>`;return}l.innerHTML=e.map(e=>`
+            <div class="tag-list-item ${t&&t.id===e.authority_id?`active`:``}" data-id="${e.authority_id}" style="display:flex; align-items:center; justify-content:space-between; padding:0.45rem 0.6rem; border-radius:4px; font-size:0.78rem;">
+              <span class="tag-name" style="font-weight:600; text-overflow:ellipsis; overflow:hidden; white-space:nowrap; flex:1; min-width:0; padding-right:0.5rem;" title="${e.name}">${e.name}</span>
+              <span class="tag-count" style="font-size:0.7rem; font-weight:700; background:rgba(0,0,0,0.05); color:var(--text-secondary); padding:0.05rem 0.35rem; border-radius:10px;">${e.book_count} lib.</span>
+            </div>
+          `).join(``)},f=async(t,o,s)=>{n.querySelectorAll(`.tag-list-item`).forEach(e=>e.classList.remove(`active`)),t.classList.add(`active`),u.innerHTML=`<div style="text-align:center; padding:5rem 2rem;"><i class="fa fa-spinner fa-spin fa-2x" style="color:var(--color-accent)"></i><p style="font-size:0.85rem; color:var(--text-secondary); margin-top:0.5rem;">Cargando obras asociadas...</p></div>`;try{let t=await r.getCatalogAuthority(o);if(!t||!t.books||!t.books.length){u.innerHTML=`<div style="text-align:center; padding:3rem 2rem; color:var(--text-secondary); font-size:0.88rem;">No hay libros asociados a este descriptor.</div>`;return}u.innerHTML=`
+            <div style="margin-bottom:1.25rem; border-bottom:1px solid var(--border-light); padding-bottom:0.75rem;">
+              <div style="font-size:0.75rem; text-transform:uppercase; letter-spacing:0.05em; color:${i.text}; font-weight:700; margin-bottom:0.25rem;">
+                <i class="${a}"></i> ${e}
+              </div>
+              <h3 style="font-family:var(--font-display); font-size:1.25rem; font-weight:700; color:var(--text-primary); margin:0 0 0.5rem 0;">${t.name}</h3>
+              <p style="font-size:0.8rem; color:var(--text-secondary); margin:0;">
+                Esta etiqueta agrupa un total de <strong>${t.book_count} obras</strong> en el catálogo del Colegio de las Vizcaínas.
+              </p>
+            </div>
+            
+            <div style="display:flex; flex-direction:column; gap:0.5rem;">
+              ${t.books.map(e=>`
+                <div style="display:flex; align-items:center; justify-content:space-between; padding:0.6rem 0.75rem; border:1px solid var(--border-light); border-radius:6px; background:var(--bg-primary); gap:1rem;">
+                  <div style="min-width:0; flex:1;">
+                    <a href="#/catalog/graph/${e.biblio_id}" class="book-title-link" style="font-family:var(--font-display); font-size:0.95rem; font-weight:700; color:var(--text-primary); text-decoration:none; display:block; margin-bottom:0.15rem;">${e.title}</a>
+                    ${e.author?`<div style="font-size:0.75rem; color:var(--text-secondary);"><i class="fa-solid fa-feather"></i> ${e.author}</div>`:``}
+                  </div>
+                  <a href="#/catalog/graph/${e.biblio_id}" class="btn btn-outline book-graph-link" style="font-size:0.7rem; padding:0.25rem 0.55rem; white-space:nowrap; flex-shrink:0;">
+                    <i class="fa-solid fa-diagram-project"></i> Ver Grafo
+                  </a>
+                </div>
+              `).join(``)}
+            </div>
+          `,u.querySelectorAll(`.book-title-link, .book-graph-link`).forEach(e=>{e.addEventListener(`click`,d)})}catch(e){u.innerHTML=`<div style="text-align:center; padding:3rem 2rem; color:var(--color-accent); font-size:0.88rem;">Error al cargar detalles: ${e.message}</div>`}};l.addEventListener(`click`,e=>{let t=e.target.closest(`.tag-list-item`);if(t){let e=t.getAttribute(`data-id`),n=t.querySelector(`.tag-name`).textContent;f(t,e,n)}}),s(o),c.addEventListener(`input`,()=>{let e=c.value.toLowerCase().normalize(`NFD`).replace(/[\u0300-\u036f]/g,``),t=o.filter(t=>t.name.toLowerCase().normalize(`NFD`).replace(/[\u0300-\u036f]/g,``).includes(e));s(t)}),t&&t.id&&setTimeout(()=>{let e=l.querySelector(`.tag-list-item[data-id="${t.id}"]`);if(e)e.scrollIntoView({block:`center`,behavior:`smooth`}),f(e,t.id,t.name);else{let e=document.createElement(`div`);e.className=`tag-list-item active`,e.setAttribute(`data-id`,t.id),e.innerHTML=`<span class="tag-name">${t.name}</span>`,f(e,t.id,t.name)}},50)}catch(e){l.innerHTML=`<div style="text-align:center; padding:2rem; color:var(--color-accent); font-size:0.8rem;">Error al cargar descriptores: ${e.message}</div>`}}},La={Autor:`#7c1933`,Tema:`#52755e`,"Tema (Persona)":`#52755e`,"Tema (Institución)":`#52755e`,Lugar:`#56697a`,"Institución / Organización":`#b38f4d`,"Título Uniforme":`#805a96`},Ra={Autor:`fa-solid fa-feather`,Tema:`fa-solid fa-tags`,"Tema (Persona)":`fa-solid fa-user-tag`,"Tema (Institución)":`fa-solid fa-building-flag`,Lugar:`fa-solid fa-map-pin`,"Institución / Organización":`fa-solid fa-building`,"Título Uniforme":`fa-solid fa-bookmark`};function za(e){return e.type===`target_book`?`#7c1933`:e.type===`connected_book`?`#56697a`:e.type===`authority`&&La[e.authority_type]||`#888`}function Ba(e){return e.type===`target_book`?18:e.type===`authority`?Math.min(8+(e.book_count||1)*1.5,16):e.type===`connected_book`?10:8}var Va=[i,a,o,Aa,Ia,{path:`/catalog/graph/:id`,navKey:`catalog`,async render(e,t){let n=t.id,[i,a]=await Promise.all([r.getCatalogBook(n),r.getCatalogGraph(n,15)]);e.innerHTML=`
       <div style="margin-bottom:1.5rem;">
         <a href="#/catalog" style="color:var(--text-secondary); text-decoration:none; font-size:0.85rem;">
           <i class="fa-solid fa-arrow-left"></i> Volver al Catálogo

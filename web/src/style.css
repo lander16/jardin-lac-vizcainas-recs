@@ -1562,4 +1562,114 @@ svg text {
   }
 }
 
+/* Catalog Stats and Authority Inspector Styles */
+.catalog-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+}
+
+@media (max-width: 576px) {
+  .catalog-stats-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.catalog-type-chip {
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.catalog-type-chip:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.06);
+  filter: brightness(0.97);
+}
+
+.catalog-type-chip:active {
+  transform: translateY(0);
+}
+
+.inspector-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+.inspector-modal-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.inspector-modal-card {
+  width: 92%;
+  max-width: 950px;
+  height: 85vh;
+  max-height: 700px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.15);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transform: scale(0.95);
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.inspector-modal-overlay.active .inspector-modal-card {
+  transform: scale(1);
+}
+
+.tag-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  background: white;
+  border: 1px solid var(--border-light);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.tag-list-item:hover {
+  background: var(--bg-secondary);
+  border-color: var(--text-muted);
+}
+
+.tag-list-item.active {
+  background: var(--color-accent) !important;
+  color: white !important;
+  border-color: var(--color-accent) !important;
+}
+
+.tag-list-item.active .tag-count {
+  background: rgba(255, 255, 255, 0.25) !important;
+  color: white !important;
+}
+
+@media (max-width: 768px) {
+  .modal-body-layout {
+    grid-template-columns: 1fr !important;
+    grid-template-rows: 1.2fr 1fr;
+    height: calc(100% - 130px) !important;
+  }
+}
+
 
