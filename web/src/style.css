@@ -305,10 +305,12 @@ main.container {
 /* Table Style */
 .table-wrapper {
   overflow-x: auto;
+  width: 100%;
 }
 
 table {
   width: 100%;
+  min-width: 800px;
   border-collapse: collapse;
   text-align: left;
 }
@@ -1458,6 +1460,10 @@ svg text {
   }
 
   /* Responsive Table as Cards */
+  .table-wrapper table {
+    min-width: auto !important;
+    width: 100% !important;
+  }
   .table-wrapper table, 
   .table-wrapper thead, 
   .table-wrapper tbody, 
