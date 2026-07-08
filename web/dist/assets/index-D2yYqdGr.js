@@ -630,7 +630,7 @@
       </div>
 
       <!-- Main Columns Layout -->
-      <div class="search-layout-grid" style="display:grid; grid-template-columns: 1.55fr 1fr; gap:2rem; align-items: start;">
+      <div class="search-layout-grid">
         
         <!-- Left Column: Search Results Explorer -->
         <div class="glass-card" style="padding:1.5rem;">
@@ -722,12 +722,12 @@
         `}return`
         <div class="catalog-book-card" style="position:relative; overflow:hidden; padding: 1rem; border-bottom: 1px solid var(--border-light); margin-bottom: 0.75rem; background: var(--bg-primary); border-radius: 6px;">
           ${t?`<div style="position:absolute; top:0; left:0; width:3px; height:100%; background:var(--color-accent);"></div>`:``}
-          <div class="catalog-book-header" style="display:flex; justify-content:space-between; align-items:flex-start; gap:1rem;">
+          <div class="catalog-book-header">
             <div class="catalog-book-info" style="min-width:0; flex:1;">
               <a href="#/catalog/graph/${e.biblio_id}" class="catalog-book-title" style="font-family:var(--font-display); font-size:1.05rem; font-weight:700; color:var(--text-primary); text-decoration:none; display:block; margin-bottom:0.25rem;">${e.title}</a>
               ${e.author?`<div class="catalog-book-author" style="font-size:0.8rem; color:var(--text-secondary);"><i class="fa-solid fa-feather"></i> ${e.author}</div>`:``}
             </div>
-            <div style="display:flex; flex-direction:column; align-items:flex-end; gap:0.5rem; flex-shrink:0;">
+            <div class="catalog-book-meta-right">
               ${n}
               <div class="catalog-book-stats">
                 ${e.connection_count>0?`
@@ -742,7 +742,7 @@
           </div>
           
           ${e.match_explanation?`
-            <div style="margin-top: 0.6rem; font-size: 0.78rem; color: var(--text-secondary); background: rgba(86,105,122,0.04); padding: 0.4rem 0.6rem; border-radius: 4px; display: inline-flex; align-items: center; gap: 0.35rem; border: 1px dashed rgba(86,105,122,0.15);">
+            <div class="search-match-explanation">
               <i class="fa-solid fa-magnifying-glass-chart" style="color:var(--color-accent); font-size:0.85rem;"></i>
               <span><strong>Motivo del ranking:</strong> ${e.match_explanation}</span>
             </div>

@@ -1264,3 +1264,138 @@ svg text {
   color: var(--text-primary);
 }
 
+/* Responsive adjustments for Catalog Explorer and Recommendations */
+
+.search-layout-grid {
+  display: grid;
+  grid-template-columns: 1.55fr 1fr;
+  gap: 2rem;
+  align-items: start;
+}
+
+.catalog-book-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.catalog-book-meta-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.search-match-explanation {
+  margin-top: 0.6rem;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  background: rgba(86,105,122,0.04);
+  padding: 0.4rem 0.6rem;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px dashed rgba(86,105,122,0.15);
+}
+
+@media (max-width: 968px) {
+  .search-layout-grid {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+}
+
+@media (max-width: 576px) {
+  /* Main padding */
+  main.container {
+    padding: 1rem;
+  }
+
+  /* Header / Navigation */
+  header {
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 1rem;
+    text-align: center;
+  }
+  .nav-links {
+    width: 100%;
+    justify-content: center;
+    gap: 0.5rem;
+  }
+  .nav-link {
+    padding: 0.4rem 0.75rem;
+    font-size: 0.85rem;
+  }
+
+  /* User profile header */
+  .user-profile-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1.25rem;
+  }
+  .user-profile-header > div:last-child {
+    width: 100%;
+  }
+  .user-profile-header .btn {
+    width: 100%;
+    justify-content: center;
+  }
+  .user-info-block {
+    gap: 1rem;
+  }
+  .avatar-large {
+    width: 3.5rem;
+    height: 3.5rem;
+    font-size: 1.5rem;
+  }
+  .user-details h2 {
+    font-size: 1.5rem;
+  }
+
+  /* Recommendation Card Header */
+  .rec-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+  
+  .score-badge-area {
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between;
+    width: 100%;
+    min-width: 0 !important;
+  }
+  
+  /* Catalog Card Header */
+  .catalog-book-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+  
+  .catalog-book-meta-right {
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between;
+    width: 100%;
+    min-width: 0 !important;
+  }
+  
+  /* Buttons and forms inside cards */
+  .catalog-book-stats {
+    width: 100%;
+    text-align: right;
+  }
+  
+  /* Slider display on mobile */
+  .alpha-value-display {
+    font-size: 0.78rem;
+  }
+}
+
+
