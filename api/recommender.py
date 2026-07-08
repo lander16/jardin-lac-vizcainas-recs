@@ -25,12 +25,46 @@ class RecommenderEngine:
         self.load_data()
         
     def load_data(self):
-        # Load book metadata
+        # Load book metadata (from Goodreads matching pipeline)
         if os.path.exists(self.metadata_path):
             with open(self.metadata_path, 'r', encoding='utf-8') as f:
                 self.books = json.load(f)
         else:
+            self.books = {}
             print("Warning: book_metadata.json not found.")
+
+        # Load Koha catalog as official/fallback metadata to resolve "Book XXX" placeholders
+        catalog_path = os.path.join(self.data_dir, "koha/catalog.json")
+        if os.path.exists(catalog_path):
+            try:
+                with open(catalog_path, 'r', encoding='utf-8') as f:
+                    catalog_data = json.load(f)
+                    catalog_dict = {}
+                    if isinstance(catalog_data, list):
+                        catalog_dict = {str(book['biblio_id']): book for book in catalog_data}
+                    elif isinstance(catalog_data, dict):
+                        catalog_dict = catalog_data
+                    
+                    # Merge catalog entries into self.books if they are missing or have placeholders
+                    for bid, cbook in catalog_dict.items():
+                        bid_str = str(bid)
+                        if bid_str not in self.books:
+                            self.books[bid_str] = {
+                                "book_id": bid_str,
+                                "title": cbook.get("title", f"Book {bid_str}"),
+                                "author": cbook.get("author", ""),
+                                "description": cbook.get("title", ""), # Fallback description
+                                "similar_books": []
+                            }
+                        else:
+                            # If title is placeholder, digit, or empty, override with Koha official title
+                            title = self.books[bid_str].get("title", "")
+                            if not title or title.startswith("Book ") or title.isdigit():
+                                self.books[bid_str]["title"] = cbook.get("title", title or f"Book {bid_str}")
+                            if not self.books[bid_str].get("author"):
+                                self.books[bid_str]["author"] = cbook.get("author", "")
+            except Exception as e:
+                print(f"Error loading catalog.json as fallback metadata: {e}")
             
         # Load content similarities
         if os.path.exists(self.content_sim_path):
