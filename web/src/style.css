@@ -241,6 +241,10 @@ main.container {
   gap: 2rem;
 }
 
+.dashboard-grid > * {
+  min-width: 0;
+}
+
 @media (max-width: 968px) {
   .dashboard-grid {
     grid-template-columns: 1fr;
@@ -1435,8 +1439,10 @@ svg text {
 .directory-scroll-container {
   max-height: 550px;
   overflow-y: auto;
+  overflow-x: auto;
   padding-right: 0.25rem;
   margin-top: 1rem;
+  width: 100%;
 }
 
 .text-center {
