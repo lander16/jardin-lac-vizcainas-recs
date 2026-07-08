@@ -1398,4 +1398,83 @@ svg text {
   }
 }
 
+.text-center {
+  text-align: center;
+}
+.text-right {
+  text-align: right;
+}
+
+@media (max-width: 768px) {
+  .text-center, .text-right {
+    text-align: right !important;
+  }
+
+  /* Responsive Table as Cards */
+  .table-wrapper table, 
+  .table-wrapper thead, 
+  .table-wrapper tbody, 
+  .table-wrapper th, 
+  .table-wrapper td, 
+  .table-wrapper tr { 
+    display: block; 
+  }
+  
+  .table-wrapper thead tr { 
+    position: absolute;
+    top: -9999px;
+    left: -9999px;
+  }
+  
+  .table-wrapper tr { 
+    border: 1px solid var(--border-light);
+    border-radius: 6px;
+    margin-bottom: 1rem;
+    background: var(--bg-card);
+    padding: 1rem;
+    box-shadow: var(--shadow-main);
+  }
+  
+  .table-wrapper td { 
+    border: none;
+    border-bottom: 1px dashed var(--border-light); 
+    position: relative;
+    padding: 0.75rem 0; 
+    padding-left: 45%; 
+    text-align: right;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .table-wrapper td:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+
+  .table-wrapper td:first-child {
+    padding-top: 0;
+  }
+  
+  .table-wrapper td::before { 
+    position: absolute;
+    left: 0;
+    width: 40%; 
+    padding-right: 10px; 
+    white-space: nowrap;
+    text-align: left;
+    font-weight: 700;
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  
+  .table-wrapper td:nth-of-type(1)::before { content: "Nombre"; }
+  .table-wrapper td:nth-of-type(2)::before { content: "Credencial"; }
+  .table-wrapper td:nth-of-type(3)::before { content: "Correo"; }
+  .table-wrapper td:nth-of-type(4)::before { content: "Préstamos"; }
+  .table-wrapper td:nth-of-type(5)::before { content: "Acciones"; }
+}
+
 

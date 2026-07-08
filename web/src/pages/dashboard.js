@@ -127,8 +127,8 @@ export const DashboardPage = {
         </td>
         <td style="font-family:monospace; color:var(--text-secondary);">${user.cardnumber}</td>
         <td style="color:var(--text-secondary);">${user.email}</td>
-        <td style="text-align:center; font-weight:600; font-family:var(--font-display); font-size:1.1rem;">${user.checkout_count}</td>
-        <td style="text-align:right;">
+        <td class="text-center" style="font-weight:600; font-family:var(--font-display); font-size:1.1rem;">${user.checkout_count}</td>
+        <td class="text-right">
           <div style="display:inline-flex; gap:0.5rem;">
             <a href="#/user/${user.user_id}" class="btn btn-primary" style="padding:0.35rem 0.75rem; font-size:0.8rem;">
               Recomendar
