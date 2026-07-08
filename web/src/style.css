@@ -304,7 +304,7 @@ main.container {
 
 /* Table Style */
 .table-wrapper {
-  overflow-x: auto;
+  overflow: hidden;
   width: 100%;
 }
 
@@ -1444,6 +1444,13 @@ svg text {
   }
 }
 
+.directory-scroll-container {
+  max-height: 550px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 0.25rem;
+  margin-top: 1rem;
+}
 
 .text-center {
   text-align: center;
