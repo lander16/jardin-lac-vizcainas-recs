@@ -1330,23 +1330,6 @@ svg text {
     padding: 1rem;
   }
 
-  /* Header / Navigation */
-  header {
-    flex-direction: column;
-    gap: 0.75rem;
-    padding: 1rem;
-    text-align: center;
-  }
-  .nav-links {
-    width: 100%;
-    justify-content: center;
-    gap: 0.5rem;
-  }
-  .nav-link {
-    padding: 0.4rem 0.75rem;
-    font-size: 0.85rem;
-  }
-
   /* User profile header */
   .user-profile-header {
     flex-direction: column;
@@ -1449,6 +1432,13 @@ svg text {
   }
 }
 
+.directory-scroll-container {
+  max-height: 550px;
+  overflow-y: auto;
+  padding-right: 0.25rem;
+  margin-top: 1rem;
+}
+
 .text-center {
   text-align: center;
 }
@@ -1456,7 +1446,7 @@ svg text {
   text-align: right;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 968px) {
   .text-center, .text-right {
     text-align: right !important;
   }
@@ -1533,6 +1523,25 @@ svg text {
     text-align: center !important;
     width: 100% !important;
     border-bottom: none !important;
+  }
+}
+
+@media (max-width: 768px) {
+  /* Header / Navigation */
+  header {
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 1rem;
+    text-align: center;
+  }
+  .nav-links {
+    width: 100%;
+    justify-content: center;
+    gap: 0.5rem;
+  }
+  .nav-link {
+    padding: 0.4rem 0.75rem;
+    font-size: 0.85rem;
   }
 }
 

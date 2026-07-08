@@ -58,25 +58,27 @@ export const DashboardPage = {
             <input type="text" id="user-search" class="search-input" placeholder="Buscar lectores por nombre, correo o número de credencial...">
           </div>
 
-          <div class="table-wrapper">
-            <table>
-              <thead>
-                <tr>
-                  <th>Nombre</th>
-                  <th>Credencial</th>
-                  <th>Correo Electrónico</th>
-                  <th style="text-align:center;">Préstamos</th>
-                  <th style="text-align:right;">Acciones</th>
-                </tr>
-              </thead>
-              <tbody id="users-table-body">
-                ${this.renderUsersRows(users)}
-              </tbody>
-            </table>
+          <div class="directory-scroll-container">
+            <div class="table-wrapper">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Nombre</th>
+                    <th>Credencial</th>
+                    <th>Correo Electrónico</th>
+                    <th style="text-align:center;">Préstamos</th>
+                    <th style="text-align:right;">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="users-table-body">
+                  ${this.renderUsersRows(users)}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
 
-        <div style="display:flex; flex-direction:column; gap:2fr;">
+        <div style="display:flex; flex-direction:column; gap:1.5rem;">
           <div class="glass-card" style="margin-bottom:1.5rem;">
             <div class="section-title">
               <i class="fa-solid fa-fire" style="color:var(--color-collab)"></i>
