@@ -130,7 +130,7 @@
           </div>
         </div>
       </div>
-    `,this.bindEvents(n)},renderUsersRows(e){return e.length===0?`<tr><td colspan="5" style="text-align:center;color:var(--text-secondary);padding:2rem;">No se encontraron lectores.</td></tr>`:e.map(e=>`
+    `,this.bindEvents(n)},renderUsersRows(e){return e.length===0?`<tr><td class="no-label" colspan="5" style="text-align:center;color:var(--text-secondary);padding:2rem;width:100%;">No se encontraron lectores.</td></tr>`:e.map(e=>`
       <tr>
         <td>
           <a href="#/user/${e.user_id}" style="color:var(--text-primary); font-weight:600; text-decoration:none;">${e.name}</a>
@@ -197,7 +197,7 @@
                 <span><i class="fa-solid fa-tag" style="color:var(--color-content)"></i> Contenido (Temático)</span>
                 <span id="weight-content-pct" style="color:var(--color-content)">33%</span>
               </div>
-              <input type="range" id="weight-content-slider" min="0" max="100" step="1" value="33" style="width:100%;">
+              <input type="range" id="weight-content-slider" class="slider-range-content" min="0" max="100" step="1" value="33" style="width:100%;">
             </div>
 
             <!-- Collab weight slider -->
@@ -206,7 +206,7 @@
                 <span><i class="fa-solid fa-user-group" style="color:var(--color-collab)"></i> Lectores (Afinidad)</span>
                 <span id="weight-collab-pct" style="color:var(--color-collab)">33%</span>
               </div>
-              <input type="range" id="weight-collab-slider" min="0" max="100" step="1" value="33" style="width:100%;">
+              <input type="range" id="weight-collab-slider" class="slider-range-collab" min="0" max="100" step="1" value="33" style="width:100%;">
             </div>
 
             <!-- Authority weight slider -->
@@ -215,7 +215,7 @@
                 <span><i class="fa-solid fa-bookmark" style="color:var(--color-authority)"></i> Autoridades (Catálogo)</span>
                 <span id="weight-auth-pct" style="color:var(--color-authority)">34%</span>
               </div>
-              <input type="range" id="weight-auth-slider" min="0" max="100" step="1" value="34" style="width:100%;">
+              <input type="range" id="weight-auth-slider" class="slider-range-auth" min="0" max="100" step="1" value="34" style="width:100%;">
             </div>
             
             <div class="alpha-value-display" id="weights-value-display" style="font-size:0.8rem; text-align:center; font-weight:700; border-top:1px solid var(--border-light); padding-top:0.75rem; margin-top:0.75rem; color:var(--text-secondary);">

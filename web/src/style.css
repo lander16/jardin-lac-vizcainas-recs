@@ -496,6 +496,16 @@ input[type=range]::-webkit-slider-thumb {
   transition: transform 0.1s ease;
 }
 
+input[type=range].slider-range-content::-webkit-slider-thumb {
+  background: var(--color-content);
+}
+input[type=range].slider-range-collab::-webkit-slider-thumb {
+  background: var(--color-collab);
+}
+input[type=range].slider-range-auth::-webkit-slider-thumb {
+  background: var(--color-authority);
+}
+
 input[type=range]::-webkit-slider-thumb:hover {
   transform: scale(1.15);
 }
@@ -529,6 +539,7 @@ input[type=range]::-webkit-slider-thumb:hover {
   padding: 0.5rem 0.75rem;
   border-radius: 0.25rem;
   border: 1px solid var(--border-light);
+  min-width: 0;
 }
 
 .checkout-item-title {
@@ -537,7 +548,9 @@ input[type=range]::-webkit-slider-thumb:hover {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 185px;
+  flex: 1;
+  min-width: 0;
+  margin-right: 0.5rem;
 }
 
 /* Recommendation Cards */
@@ -1510,6 +1523,17 @@ svg text {
   .table-wrapper td:nth-of-type(3)::before { content: "Correo"; }
   .table-wrapper td:nth-of-type(4)::before { content: "Préstamos"; }
   .table-wrapper td:nth-of-type(5)::before { content: "Acciones"; }
+
+  .table-wrapper td.no-label::before {
+    display: none !important;
+  }
+  .table-wrapper td.no-label {
+    padding-left: 0 !important;
+    justify-content: center !important;
+    text-align: center !important;
+    width: 100% !important;
+    border-bottom: none !important;
+  }
 }
 
 

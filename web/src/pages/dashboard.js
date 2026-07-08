@@ -117,7 +117,7 @@ export const DashboardPage = {
 
   renderUsersRows(users) {
     if (users.length === 0) {
-      return `<tr><td colspan="5" style="text-align:center;color:var(--text-secondary);padding:2rem;">No se encontraron lectores.</td></tr>`;
+      return `<tr><td class="no-label" colspan="5" style="text-align:center;color:var(--text-secondary);padding:2rem;width:100%;">No se encontraron lectores.</td></tr>`;
     }
     
     return users.map(user => `
