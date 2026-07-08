@@ -85,11 +85,11 @@ export const BookExplorerPage = {
               const pct = Math.round(sim.similarity * 100);
               return `
                 <div style="display:flex; flex-direction:column; background:var(--bg-primary); padding:0.75rem; border-radius:0.25rem; border:1px solid var(--border-light)">
-                  <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.5rem; gap:0.5rem;">
+                  <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.5rem; gap:0.5rem; min-width:0;">
                     <a href="#/book/${sim.book_id}" style="color:var(--text-primary); font-weight:600; font-size:0.88rem; text-decoration:none; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1;" title="${sim.title}">
                       ${sim.title}
                     </a>
-                    <span class="similarity-badge">${pct}% afinidad</span>
+                    <span class="similarity-badge" style="flex-shrink:0;">${pct}% afinidad</span>
                   </div>
                   <div style="display:flex; align-items:center; gap:0.5rem;">
                     <div class="score-track" style="height:4px; flex:1; background:#e3dbcf;">

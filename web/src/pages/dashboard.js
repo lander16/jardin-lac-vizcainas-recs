@@ -84,12 +84,12 @@ export const DashboardPage = {
             </div>
             <div style="display:flex; flex-direction:column; gap:0.75rem;">
               ${stats.popular_books.map((book, idx) => `
-                <div style="display:flex; justify-content:space-between; align-items:center; background:var(--bg-primary); padding:0.6rem 0.8rem; border-radius:0.25rem; border:1px solid var(--border-light)">
-                  <div style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:200px; font-size:0.88rem; font-weight:500;">
+                <div style="display:flex; justify-content:space-between; align-items:center; background:var(--bg-primary); padding:0.6rem 0.8rem; border-radius:0.25rem; border:1px solid var(--border-light); gap:0.5rem; min-width:0;">
+                  <div style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:0.88rem; font-weight:500; min-width:0; flex:1;">
                     <span style="color:var(--text-muted); margin-right:0.4rem; font-family:var(--font-display); font-weight:700;">#${idx+1}</span>
                     <a href="#/book/${book.book_id}" style="color:var(--text-primary); text-decoration:none; font-family:var(--font-sans);" onmouseover="this.style.color='var(--color-accent)'" onmouseout="this.style.color='var(--text-primary)'">${book.title}</a>
                   </div>
-                  <span class="source-badge collaborative" style="font-size:0.68rem; padding:0.15rem 0.4rem;">
+                  <span class="source-badge collaborative" style="font-size:0.68rem; padding:0.15rem 0.4rem; flex-shrink:0;">
                     <i class="fa-solid fa-check"></i> ${book.checkout_count} lecturas
                   </span>
                 </div>

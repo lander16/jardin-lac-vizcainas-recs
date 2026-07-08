@@ -105,12 +105,12 @@
             </div>
             <div style="display:flex; flex-direction:column; gap:0.75rem;">
               ${t.popular_books.map((e,t)=>`
-                <div style="display:flex; justify-content:space-between; align-items:center; background:var(--bg-primary); padding:0.6rem 0.8rem; border-radius:0.25rem; border:1px solid var(--border-light)">
-                  <div style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:200px; font-size:0.88rem; font-weight:500;">
+                <div style="display:flex; justify-content:space-between; align-items:center; background:var(--bg-primary); padding:0.6rem 0.8rem; border-radius:0.25rem; border:1px solid var(--border-light); gap:0.5rem; min-width:0;">
+                  <div style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:0.88rem; font-weight:500; min-width:0; flex:1;">
                     <span style="color:var(--text-muted); margin-right:0.4rem; font-family:var(--font-display); font-weight:700;">#${t+1}</span>
                     <a href="#/book/${e.book_id}" style="color:var(--text-primary); text-decoration:none; font-family:var(--font-sans);" onmouseover="this.style.color='var(--color-accent)'" onmouseout="this.style.color='var(--text-primary)'">${e.title}</a>
                   </div>
-                  <span class="source-badge collaborative" style="font-size:0.68rem; padding:0.15rem 0.4rem;">
+                  <span class="source-badge collaborative" style="font-size:0.68rem; padding:0.15rem 0.4rem; flex-shrink:0;">
                     <i class="fa-solid fa-check"></i> ${e.checkout_count} lecturas
                   </span>
                 </div>
@@ -453,11 +453,11 @@
               <div style="text-align:center; padding:2rem; color:var(--text-secondary); font-style:italic;">No se encontraron obras similares. Intente ejecutar el pipeline de procesamiento semanal.</div>
             `:i.similar_books.map((e,t)=>{let n=Math.round(e.similarity*100);return`
                 <div style="display:flex; flex-direction:column; background:var(--bg-primary); padding:0.75rem; border-radius:0.25rem; border:1px solid var(--border-light)">
-                  <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.5rem; gap:0.5rem;">
+                  <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.5rem; gap:0.5rem; min-width:0;">
                     <a href="#/book/${e.book_id}" style="color:var(--text-primary); font-weight:600; font-size:0.88rem; text-decoration:none; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1;" title="${e.title}">
                       ${e.title}
                     </a>
-                    <span class="similarity-badge">${n}% afinidad</span>
+                    <span class="similarity-badge" style="flex-shrink:0;">${n}% afinidad</span>
                   </div>
                   <div style="display:flex; align-items:center; gap:0.5rem;">
                     <div class="score-track" style="height:4px; flex:1; background:#e3dbcf;">

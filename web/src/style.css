@@ -1413,6 +1413,27 @@ svg text {
   .alpha-value-display {
     font-size: 0.78rem;
   }
+
+  /* Responsive Typography */
+  h1 {
+    font-size: 1.85rem !important;
+  }
+  
+  .hero h1 {
+    font-size: 2rem !important;
+  }
+
+  /* Horizontal graph legend on mobile */
+  .graph-legend {
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    bottom: 0.5rem !important;
+    left: 0.5rem !important;
+    right: 0.5rem !important;
+    padding: 0.5rem !important;
+    font-size: 0.7rem !important;
+    gap: 0.5rem !important;
+  }
 }
 
 .text-center {
