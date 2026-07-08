@@ -8,8 +8,8 @@
   --border-focus: #7c1933;        /* Burgundy highlight for focus */
   
   --text-primary: #2d241e;        /* Deep charcoal with a touch of warm brown */
-  --text-secondary: #706356;      /* Warm taupe gray for description/details */
-  --text-muted: #9e8f80;          /* Muted sand-gray */
+  --text-secondary: #5c5044;      /* Darker warm taupe gray for description/details (contrast pass) */
+  --text-muted: #7a6a5b;          /* Darker muted sand-gray (contrast pass) */
   
   /* Classic Accents (Colegio style) */
   --color-accent: #7c1933;        /* Historic Burgundy/Crimson */
@@ -218,7 +218,7 @@ main.container {
   border: 1px solid rgba(82, 117, 94, 0.2);
 }
 
-.stat-info h3 {
+.stat-info h2 {
   font-size: 0.8rem;
   text-transform: uppercase;
   color: var(--text-secondary);

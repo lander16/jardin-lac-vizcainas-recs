@@ -22,7 +22,7 @@ export const DashboardPage = {
             <i class="fa-solid fa-users"></i>
           </div>
           <div class="stat-info">
-            <h3>Lectores</h3>
+            <h2>Lectores</h2>
             <p>${stats.total_users}</p>
           </div>
         </div>
@@ -31,7 +31,7 @@ export const DashboardPage = {
             <i class="fa-solid fa-book"></i>
           </div>
           <div class="stat-info">
-            <h3>Títulos Únicos</h3>
+            <h2>Títulos Únicos</h2>
             <p>${stats.total_books}</p>
           </div>
         </div>
@@ -40,7 +40,7 @@ export const DashboardPage = {
             <i class="fa-solid fa-book-open-reader"></i>
           </div>
           <div class="stat-info">
-            <h3>Préstamos Totales</h3>
+            <h2>Préstamos Totales</h2>
             <p>${stats.total_checkouts}</p>
           </div>
         </div>
