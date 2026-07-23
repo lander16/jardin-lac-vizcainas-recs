@@ -1,0 +1,150 @@
+<% content_for :title, "Recomendaciones para #{@patron.name} - Jardín LAC Vizcaínas" %>
+
+<div style="margin-bottom:1.5rem; display:flex; justify-content:space-between; align-items:center;">
+  <a href="<%= root_path %>" class="btn btn-secondary" style="padding:0.4rem 0.8rem; font-size:0.85rem; font-weight:600;">
+    <i class="fa-solid fa-arrow-left"></i> Volver a la Lista
+  </a>
+  <a href="<%= user_graph_path(@patron.id) %>" class="btn btn-secondary" style="padding:0.4rem 0.8rem; font-size:0.85rem; font-weight:600;">
+    <i class="fa-solid fa-diagram-project"></i> Ver Grafo de Red
+  </a>
+</div>
+
+<% if notice %>
+  <div style="background: var(--bg-card); border-left: 4px solid var(--color-sage); padding: 1rem; margin-bottom: 1.5rem; border-radius: 4px; color: var(--color-sage); font-weight: 600;">
+    <i class="fa-solid fa-circle-check"></i> <%= notice %>
+  </div>
+<% end %>
+
+<!-- Reader Profile Banner -->
+<div class="glass-card" style="margin-bottom:2rem;">
+  <div style="display:flex; align-items:center; gap:1.25rem; flex-wrap:wrap;">
+    <div style="width:3.5rem; height:3.5rem; border-radius:50%; background:var(--bg-secondary); border:2px solid var(--border-light); display:flex; align-items:center; justify-content:center; color:var(--color-accent); font-family:var(--font-display); font-size:1.5rem; font-weight:700;">
+      <%= @patron.name.split.map(&:first).first(2).join.upcase %>
+    </div>
+    <div style="flex:1; min-width:200px;">
+      <h1 style="font-family:var(--font-display); font-size:1.85rem; font-weight:700; color:var(--text-primary); margin:0 0 0.25rem 0;">
+        <%= @patron.name %>
+      </h1>
+      <div style="display:flex; gap:1.25rem; flex-wrap:wrap; font-size:0.85rem; color:var(--text-secondary);">
+        <span><i class="fa-solid fa-id-card"></i> <%= @patron.cardnumber %></span>
+        <span><i class="fa-solid fa-envelope"></i> <%= @patron.email %></span>
+        <span><i class="fa-solid fa-book-reader"></i> <%= @patron.checkouts_count %> lecturas</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="dashboard-grid" data-controller="balance" data-balance-url-value="<%= user_recommendations_frame_path(@patron.id) %>">
+  <!-- Sidebar: Controls & Checkout History -->
+  <div style="display:flex; flex-direction:column; gap:1.5rem;">
+    <!-- Dynamic Sliders -->
+    <div class="glass-card">
+      <div class="section-title">
+        <i class="fa-solid fa-sliders" style="color:var(--color-accent)"></i>
+        <h2>Balance Híbrido</h2>
+      </div>
+      <p style="font-size:0.8rem; color:var(--text-secondary); margin-bottom:1.25rem; line-height:1.4;">
+        Ajusta la ponderación en tiempo real para combinar las 3 dimensiones del recomendador.
+      </p>
+
+      <div style="display:flex; flex-direction:column; gap:1.25rem;">
+        <div>
+          <div style="display:flex; justify-content:space-between; font-size:0.85rem; font-weight:600; margin-bottom:0.35rem;">
+            <span style="color:var(--color-content);"><i class="fa-solid fa-book"></i> Contenido</span>
+            <span data-balance-target="contentVal"><%= (@w_content * 100).round %>%</span>
+          </div>
+          <input type="range" min="0" max="1" step="0.01" value="<%= @w_content %>" class="slider-content"
+                 data-balance-target="contentSlider" data-action="input->balance#update">
+        </div>
+
+        <div>
+          <div style="display:flex; justify-content:space-between; font-size:0.85rem; font-weight:600; margin-bottom:0.35rem;">
+            <span style="color:var(--color-collab);"><i class="fa-solid fa-users"></i> Lectores Afines</span>
+            <span data-balance-target="collabVal"><%= (@w_collab * 100).round %>%</span>
+          </div>
+          <input type="range" min="0" max="1" step="0.01" value="<%= @w_collab %>" class="slider-collab"
+                 data-balance-target="collabSlider" data-action="input->balance#update">
+        </div>
+
+        <div>
+          <div style="display:flex; justify-content:space-between; font-size:0.85rem; font-weight:600; margin-bottom:0.35rem;">
+            <span style="color:var(--color-authority);"><i class="fa-solid fa-tags"></i> Autoridades</span>
+            <span data-balance-target="authVal"><%= (@w_auth * 100).round %>%</span>
+          </div>
+          <input type="range" min="0" max="1" step="0.01" value="<%= @w_auth %>" class="slider-auth"
+                 data-balance-target="authSlider" data-action="input->balance#update">
+        </div>
+      </div>
+    </div>
+
+    <!-- Active Checkout History -->
+    <div class="glass-card" data-controller="modal">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+        <div class="section-title" style="margin-bottom:0;">
+          <i class="fa-solid fa-clock-rotate-left" style="color:var(--color-collab)"></i>
+          <h2>Historial de Lectura</h2>
+        </div>
+        <button class="btn btn-primary" style="padding:0.3rem 0.6rem; font-size:0.75rem;" data-action="click->modal#open">
+          <i class="fa-solid fa-plus"></i> Simular Préstamo
+        </button>
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:0.5rem; max-height:400px; overflow-y:auto; padding-right:0.25rem;">
+        <% if @checkouts.empty? %>
+          <p style="font-size:0.85rem; color:var(--text-muted); font-style:italic;">No hay préstamos registrados para este lector.</p>
+        <% else %>
+          <% @checkouts.each do |c| %>
+            <div class="checkout-item" style="display:flex; align-items:center; justify-content:space-between; background:var(--bg-primary); padding:0.5rem 0.75rem; border-radius:4px; border:1px solid var(--border-light); gap:0.5rem;">
+              <div style="min-width:0; flex:1;">
+                <a href="<%= book_path(c.book.id) %>" class="checkout-item-title" style="font-size:0.85rem; font-weight:600; color:var(--text-primary); text-decoration:none; display:block; text-overflow:ellipsis; overflow:hidden; white-space:nowrap;" title="<%= c.book.title %>">
+                  <%= c.book.title %>
+                </a>
+                <% if c.simulated %>
+                  <span style="font-size:0.65rem; color:var(--color-gold); font-weight:600;">(Simulado)</span>
+                <% end %>
+              </div>
+              <span style="font-size:0.7rem; color:var(--text-muted); flex-shrink:0;">
+                <%= c.checkout_date ? c.checkout_date.strftime("%d/%m/%Y") : "Hoy" %>
+              </span>
+            </div>
+          <% end %>
+        <% end %>
+      </div>
+
+      <!-- Checkout Modal -->
+      <dialog id="checkout-modal" class="modal-overlay" data-modal-target="dialog">
+        <div class="modal-card" style="max-width:500px; width:90%; background:white; padding:1.5rem; border-radius:8px; box-shadow:0 10px 40px rgba(0,0,0,0.2); position:relative;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; border-bottom:1px solid var(--border-light); padding-bottom:0.75rem;">
+            <h3 style="font-family:var(--font-display); font-size:1.25rem; font-weight:700; margin:0; color:var(--text-primary);">Simular Préstamo</h3>
+            <button style="background:none; border:none; font-size:1.5rem; cursor:pointer; color:var(--text-secondary);" data-action="click->modal#close">&times;</button>
+          </div>
+          
+          <div data-controller="search" data-search-url-value="<%= user_checkout_search_path(@patron.id) %>">
+            <div class="search-container" style="margin-bottom:1rem;">
+              <i class="fa-solid fa-magnifying-glass search-icon"></i>
+              <input type="text" class="search-input" placeholder="Buscar libro en el catálogo por título o autor..." data-action="input->search#input">
+            </div>
+
+            <%= turbo_frame_tag "checkout-search-results" do %>
+              <div style="text-align:center; padding:2rem; color:var(--text-muted); font-size:0.85rem;">
+                Ingresa al menos 2 letras para buscar obras disponibles.
+              </div>
+            <% end %>
+          </div>
+        </div>
+      </dialog>
+    </div>
+  </div>
+
+  <!-- Recommendations Frame Column -->
+  <div class="glass-card">
+    <div class="section-title">
+      <i class="fa-solid fa-wand-magic-sparkles" style="color:var(--color-hybrid)"></i>
+      <h2>Sugerencias Híbridas de Lectura</h2>
+    </div>
+
+    <%= turbo_frame_tag "recommendations-list" do %>
+      <%= render "users/recommendations_list", recommendations: @recommendations %>
+    <% end %>
+  </div>
+</div>

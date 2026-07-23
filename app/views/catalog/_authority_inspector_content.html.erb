@@ -1,0 +1,63 @@
+<%= turbo_frame_tag "authority-inspector" do %>
+  <div style="display:flex; flex-direction:column; height:100%;">
+    <!-- Modal Header -->
+    <div style="background:var(--bg-secondary); border-bottom:1px solid var(--border-light); padding:1rem 1.25rem; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:1rem;">
+      <div style="display:flex; align-items:center; gap:0.75rem;">
+        <div style="width:2.5rem; height:2.5rem; border-radius:50%; background:white; border:1px solid var(--border-light); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+          <i class="fa-solid fa-tag" style="color:var(--color-authority); font-size:1.25rem;"></i>
+        </div>
+        <div>
+          <h2 style="font-family:var(--font-display); font-size:1.25rem; font-weight:700; margin:0; color:var(--text-primary);"><%= auth_type %></h2>
+          <p style="font-size:0.72rem; color:var(--text-secondary); margin:2px 0 0 0;">Análisis y desglose de descriptores catalogados en Koha</p>
+        </div>
+      </div>
+
+      <div style="display:flex; gap:1.25rem; flex-wrap:wrap; font-size:0.78rem;">
+        <div>
+          <div style="font-size:0.68rem; color:var(--text-secondary); text-transform:uppercase;">Etiquetas Únicas</div>
+          <div style="font-size:1.05rem; font-weight:700; color:var(--text-primary);"><%= number_with_delimiter(type_stats[:total_authorities]) %></div>
+        </div>
+        <div>
+          <div style="font-size:0.68rem; color:var(--text-secondary); text-transform:uppercase;">Promedio de Libros</div>
+          <div style="font-size:1.05rem; font-weight:700; color:var(--text-primary);"><%= type_stats[:avg_books_per_authority] %></div>
+        </div>
+        <div style="max-width:250px;">
+          <div style="font-size:0.68rem; color:var(--text-secondary); text-transform:uppercase;">Etiqueta Más Común</div>
+          <div style="font-size:1.05rem; font-weight:700; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="<%= type_stats[:top_authority_name] %>">
+            <%= type_stats[:top_authority_name] || 'Ninguna' %>
+            <span style="font-size:0.75rem; font-weight:normal; color:var(--text-secondary);">(<%= type_stats[:top_authority_count] %> lib.)</span>
+          </div>
+        </div>
+      </div>
+
+      <button style="background:none; border:none; color:var(--text-secondary); font-size:1.75rem; cursor:pointer; padding:0.25rem 0.5rem; line-height:1;" data-action="click->modal#closeInspector">&times;</button>
+    </div>
+
+    <!-- Modal Body Layout -->
+    <div style="display:grid; grid-template-columns:1fr 1.2fr; height:calc(100% - 68px); overflow:hidden;" class="modal-body-layout">
+      <!-- Left Column: Filter & Tags List -->
+      <div style="border-right:1px solid var(--border-light); display:flex; flex-direction:column; background:var(--bg-primary); padding:1rem; min-width:0; overflow:hidden;">
+        <div id="inspector-tags-list" style="flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:0.3rem; padding-right:0.2rem;">
+          <% authorities.each do |auth| %>
+            <a href="<%= catalog_authority_detail_path(auth_type, auth.id) %>" 
+               data-turbo-frame="inspector-books-panel"
+               class="tag-list-item" 
+               style="display:flex; align-items:center; justify-content:space-between; padding:0.45rem 0.6rem; border-radius:4px; font-size:0.78rem; text-decoration:none; color:var(--text-primary);">
+              <span class="tag-name" style="font-weight:600; text-overflow:ellipsis; overflow:hidden; white-space:nowrap; flex:1; min-width:0; padding-right:0.5rem;" title="<%= auth.name %>"><%= auth.name %></span>
+              <span class="tag-count" style="font-size:0.7rem; font-weight:700; background:rgba(0,0,0,0.05); color:var(--text-secondary); padding:0.05rem 0.35rem; border-radius:10px;"><%= auth.books_count %> lib.</span>
+            </a>
+          <% end %>
+        </div>
+      </div>
+
+      <!-- Right Column: Detail & Linked Books list -->
+      <%= turbo_frame_tag "inspector-books-panel", style: "display:flex; flex-direction:column; padding:1.25rem; background:white; overflow-y:auto; min-width:0;" do %>
+        <div style="text-align:center; padding:5rem 2rem; color:var(--text-secondary); margin:auto 0;">
+          <i class="fa-solid fa-tag" style="font-size:3rem; color:var(--text-muted); margin-bottom:1rem; opacity:0.3;"></i>
+          <p style="font-size:1.05rem; font-weight:600;">Selecciona un descriptor de la izquierda</p>
+          <p style="font-size:0.8rem; color:var(--text-muted); margin-top:0.25rem;">Verás el listado de obras del acervo que comparten esta autoridad catalogada.</p>
+        </div>
+      <% end %>
+    </div>
+  </div>
+<% end %>

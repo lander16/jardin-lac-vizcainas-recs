@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title><%= content_for(:title) || "Sistema de Recomendaciones - Jardín LAC Vizcaínas" %></title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Inter:wght@300;400;500;600;700&display=block" rel="stylesheet">
+    
+    <!-- Meta Description for SEO -->
+    <meta name="description" content="Sistema de Recomendaciones y Catálogo Inteligente del Jardín de las Vizcaínas. Recomendaciones de lectura híbridas basadas en similitud temática, afinidad de lectores y autoridades catalogográficas." />
+    
+    <!-- SVG Favicon -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📖</text></svg>">
+    
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+    
+    <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
+    <%= javascript_importmap_tags %>
+  </head>
+
+  <body>
+    <header>
+      <a href="<%= root_path %>" class="logo">
+        <i class="fa-solid fa-book-open"></i>
+        <span>Jardín LAC Vizcaínas</span>
+      </a>
+      <nav class="nav-links">
+        <a href="<%= root_path %>" class="nav-link <%= 'active' if controller_name == 'dashboard' || controller_name == 'users' || controller_name == 'books' %>" id="nav-dashboard">
+          <i class="fa-solid fa-chart-line"></i> Inicio
+        </a>
+        <a href="<%= catalog_path %>" class="nav-link <%= 'active' if controller_name == 'catalog' %>" id="nav-catalog">
+          <i class="fa-solid fa-building-columns"></i> Catálogo
+        </a>
+      </nav>
+    </header>
+
+    <main class="container" id="router-view">
+      <%= yield %>
+    </main>
+
+    <footer style="text-align:center;padding:1.5rem;color:var(--text-muted);font-size:0.8rem;border-top:1px solid var(--border-light);margin-top:2rem;">
+      &copy; <%= Time.current.year %> Jardín LAC Vizcaínas &bull; POC de Sistema de Recomendaciones
+    </footer>
+  </body>
+</html>

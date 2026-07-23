@@ -1,0 +1,33 @@
+<%= turbo_frame_tag "inspector-books-panel" do %>
+  <div style="margin-bottom:1.25rem; border-bottom:1px solid var(--border-light); padding-bottom:0.75rem;">
+    <div style="font-size:0.75rem; text-transform:uppercase; letter-spacing:0.05em; color:var(--color-authority); font-weight:700; margin-bottom:0.25rem;">
+      <i class="fa-solid fa-tag"></i> <%= authority.authority_type %>
+    </div>
+    <h3 style="font-family:var(--font-display); font-size:1.25rem; font-weight:700; color:var(--text-primary); margin:0 0 0.5rem 0;"><%= authority.name %></h3>
+    <p style="font-size:0.8rem; color:var(--text-secondary); margin:0;">
+      Esta etiqueta agrupa un total de <strong><%= authority.books_count %> obras</strong> en el catálogo del Colegio de las Vizcaínas.
+    </p>
+  </div>
+
+  <div style="display:flex; flex-direction:column; gap:0.5rem;">
+    <% if books.empty? %>
+      <div style="text-align:center; padding:3rem 2rem; color:var(--text-secondary); font-size:0.88rem;">No hay libros asociados a este descriptor.</div>
+    <% else %>
+      <% books.each do |book| %>
+        <div style="display:flex; align-items:center; justify-content:space-between; padding:0.6rem 0.75rem; border:1px solid var(--border-light); border-radius:6px; background:var(--bg-primary); gap:1rem;">
+          <div style="min-width:0; flex:1;">
+            <a href="<%= catalog_graph_path(book.id) %>" data-turbo-frame="_top" class="book-title-link" style="font-family:var(--font-display); font-size:0.95rem; font-weight:700; color:var(--text-primary); text-decoration:none; display:block; margin-bottom:0.15rem;">
+              <%= book.title %>
+            </a>
+            <% if book.author.present? %>
+              <div style="font-size:0.75rem; color:var(--text-secondary);"><i class="fa-solid fa-feather"></i> <%= book.author %></div>
+            <% end %>
+          </div>
+          <a href="<%= catalog_graph_path(book.id) %>" data-turbo-frame="_top" class="btn btn-outline book-graph-link" style="font-size:0.7rem; padding:0.25rem 0.55rem; white-space:nowrap; flex-shrink:0;">
+            <i class="fa-solid fa-diagram-project"></i> Ver Grafo
+          </a>
+        </div>
+      <% end %>
+    <% end %>
+  </div>
+<% end %>

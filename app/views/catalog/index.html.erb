@@ -1,0 +1,154 @@
+<% content_for :title, "Catálogo Koha e Inspector de Autoridades - Jardín LAC Vizcaínas" %>
+
+<section class="hero" style="margin-bottom:2rem;">
+  <h1>Catálogo del Acervo y Red de Autoridades</h1>
+  <p>Explora la estructura catalográfica oficial de Koha del Colegio de las Vizcaínas mediante búsqueda inteligente y grafos interconectados.</p>
+</section>
+
+<!-- 6-Card Stats Dashboard Grid -->
+<div class="catalog-stats-grid" style="margin-bottom:2rem;">
+  <div class="glass-card stat-card">
+    <div class="stat-icon books">
+      <i class="fa-solid fa-book"></i>
+    </div>
+    <div class="stat-info">
+      <h2>Libros Catalogados</h2>
+      <p><%= number_with_delimiter(@total_books) %></p>
+    </div>
+  </div>
+
+  <div class="glass-card stat-card">
+    <div class="stat-icon users">
+      <i class="fa-solid fa-tags"></i>
+    </div>
+    <div class="stat-info">
+      <h2>Etiquetas Únicas</h2>
+      <p><%= number_with_delimiter(@total_authorities) %></p>
+    </div>
+  </div>
+
+  <div class="glass-card stat-card">
+    <div class="stat-icon checkouts">
+      <i class="fa-solid fa-link"></i>
+    </div>
+    <div class="stat-info">
+      <h2>Etiquetas por Libro</h2>
+      <p><%= @avg_authorities_per_book %></p>
+    </div>
+  </div>
+
+  <div class="glass-card stat-card">
+    <div class="stat-icon books">
+      <i class="fa-solid fa-layer-group"></i>
+    </div>
+    <div class="stat-info">
+      <h2>Libros por Etiqueta</h2>
+      <p><%= @avg_books_per_authority %></p>
+    </div>
+  </div>
+
+  <div class="glass-card stat-card">
+    <div class="stat-icon checkouts">
+      <i class="fa-solid fa-diagram-project"></i>
+    </div>
+    <div class="stat-info">
+      <h2>Conexiones Fuertes</h2>
+      <p><%= number_with_delimiter(@total_connections) %></p>
+    </div>
+  </div>
+
+  <div class="glass-card stat-card">
+    <div class="stat-icon users">
+      <i class="fa-solid fa-circle-nodes"></i>
+    </div>
+    <div class="stat-info">
+      <h2>Interconexión</h2>
+      <p><%= @percentage_connected %>%</p>
+    </div>
+  </div>
+</div>
+
+<div class="dashboard-grid" data-controller="modal">
+  <!-- Search & Results Column -->
+  <div class="glass-card">
+    <div class="section-title">
+      <i class="fa-solid fa-magnifying-glass" style="color:var(--color-accent)"></i>
+      <h2>Búsqueda Inteligente en Catálogo</h2>
+    </div>
+
+    <div class="search-container" data-controller="search" data-search-url-value="<%= catalog_search_path %>">
+      <i class="fa-solid fa-magnifying-glass search-icon"></i>
+      <input type="text" 
+             class="search-input" 
+             placeholder="Buscar por título, autor, tema o lugar (ej. 'Hess', 'México', 'Revolución')..."
+             data-action="input->search#input">
+    </div>
+
+    <%= turbo_frame_tag "catalog-results" do %>
+      <%= render "catalog/search_results", books: @books, query: nil %>
+    <% end %>
+  </div>
+
+  <!-- Sidebar: Authority Types & Popular Books -->
+  <div style="display:flex; flex-direction:column; gap:1.5rem;">
+    <!-- Authority Types list -->
+    <div class="glass-card">
+      <div class="section-title">
+        <i class="fa-solid fa-list-check" style="color:var(--color-authority)"></i>
+        <h2>Tipos de Autoridad</h2>
+      </div>
+      <p style="font-size:0.8rem; color:var(--text-secondary); margin-bottom:1rem;">
+        Haz clic en una categoría para inspeccionar sus descriptores y obras vinculadas.
+      </p>
+
+      <div style="display:flex; flex-direction:column; gap:0.5rem;">
+        <% @type_counts.each do |type, count| %>
+          <div class="catalog-type-chip" 
+               style="display:flex; justify-content:space-between; align-items:center; padding:0.6rem 0.8rem; background:var(--bg-primary); border:1px solid var(--border-light); border-radius:6px; cursor:pointer; transition:all 0.2s;"
+               data-action="click->modal#openAuthorityInspector"
+               data-modal-type-param="<%= type %>">
+            <span style="font-weight:600; font-size:0.88rem; color:var(--text-primary);">
+              <i class="fa-solid fa-tag" style="color:var(--color-authority); font-size:0.8rem; margin-right:0.4rem;"></i> <%= type %>
+            </span>
+            <span style="font-size:0.75rem; font-weight:700; background:rgba(0,0,0,0.05); padding:0.15rem 0.5rem; border-radius:12px; color:var(--text-secondary);">
+              <%= number_with_delimiter(count) %>
+            </span>
+          </div>
+        <% end %>
+      </div>
+    </div>
+
+    <!-- Top Connected Books -->
+    <div class="glass-card">
+      <div class="section-title">
+        <i class="fa-solid fa-fire" style="color:var(--color-gold)"></i>
+        <h2>Obras con Mayor Red de Conexiones</h2>
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:0.6rem;">
+        <% @popular_books.each_with_index do |b, idx| %>
+          <div style="display:flex; justify-content:space-between; align-items:center; background:var(--bg-primary); padding:0.6rem 0.8rem; border-radius:6px; border:1px solid var(--border-light); gap:0.5rem; min-width:0;">
+            <div style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:0.88rem; font-weight:500; min-width:0; flex:1;">
+              <span style="color:var(--text-muted); margin-right:0.4rem; font-family:var(--font-display); font-weight:700;">#<%= idx+1 %></span>
+              <a href="<%= catalog_graph_path(b.id) %>" style="color:var(--text-primary); text-decoration:none; font-weight:600;" onmouseover="this.style.color='var(--color-accent)'" onmouseout="this.style.color='var(--text-primary)'">
+                <%= b.title %>
+              </a>
+            </div>
+            <a href="<%= catalog_graph_path(b.id) %>" class="source-badge authority" style="font-size:0.68rem; padding:0.15rem 0.4rem; flex-shrink:0; text-decoration:none;">
+              <i class="fa-solid fa-diagram-project"></i> <%= b.connections_count %> con.
+            </a>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Authority Inspector Modal -->
+<dialog id="authority-inspector-modal" class="inspector-modal-overlay" data-modal-target="inspectorDialog" style="border:none; padding:0; background:transparent;">
+  <div class="inspector-modal-card" style="width:90vw; max-width:1100px; height:85vh; max-height:750px; background:white; border-radius:12px; overflow:hidden; box-shadow:0 25px 50px -12px rgba(0, 0, 0, 0.25);">
+    <%= turbo_frame_tag "authority-inspector" do %>
+      <div style="text-align:center; padding:5rem;"><i class="fa fa-spinner fa-spin fa-2x" style="color:var(--color-accent)"></i></div>
+    <% end %>
+  </div>
+</dialog>

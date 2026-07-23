@@ -1,0 +1,70 @@
+<%= turbo_frame_tag "catalog-results" do %>
+  <div style="display:flex; flex-direction:column; gap:0.75rem; margin-top:1rem;">
+    <% if books.empty? %>
+      <div style="text-align:center; padding:3rem; color:var(--text-secondary);">
+        <i class="fa-solid fa-building-columns" style="font-size:2.5rem; color:var(--text-muted); opacity:0.4; margin-bottom:0.75rem;"></i>
+        <p style="font-size:1rem; font-weight:600;">No se encontraron resultados en el catálogo.</p>
+        <p style="font-size:0.85rem; color:var(--text-muted);">Intenta ajustar el término de búsqueda.</p>
+      </div>
+    <% else %>
+      <% books.each do |b| %>
+        <% b_id = b.is_a?(Hash) ? b[:biblio_id] : b.id %>
+        <% b_title = b.is_a?(Hash) ? b[:title] : b.title %>
+        <% b_author = b.is_a?(Hash) ? b[:author] : b.author %>
+        <% b_score = b.is_a?(Hash) ? b[:match_score] : nil %>
+        <% b_exp = b.is_a?(Hash) ? b[:match_explanation] : nil %>
+        <% b_conns = b.is_a?(Hash) ? (b[:connection_count] || 0) : (b.outgoing_connections.size + b.incoming_connections.size) %>
+        <% b_auths = b.is_a?(Hash) ? (b[:authorities] || []) : b.authorities.map { |a| { name: a.name } } %>
+
+        <div class="catalog-book-card" style="display:flex; justify-content:space-between; align-items:flex-start; padding:1rem; background:var(--bg-primary); border:1px solid var(--border-light); border-radius:6px; gap:1rem; flex-wrap:wrap;">
+          <div style="flex:1; min-width:240px;">
+            <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap; margin-bottom:0.2rem;">
+              <a href="<%= book_path(b_id) %>" style="font-family:var(--font-display); font-size:1.15rem; font-weight:700; color:var(--text-primary); text-decoration:none;" onmouseover="this.style.color='var(--color-accent)'" onmouseout="this.style.color='var(--text-primary)'">
+                <%= b_title %>
+              </a>
+              <% if b_score %>
+                <span class="similarity-badge" style="font-size:0.7rem; padding:0.15rem 0.4rem;">
+                  <%= b_score %> pts
+                </span>
+              <% end %>
+            </div>
+
+            <% if b_author.present? %>
+              <div style="font-size:0.8rem; color:var(--text-secondary); margin-bottom:0.5rem;">
+                <i class="fa-solid fa-feather"></i> <%= b_author %>
+              </div>
+            <% end %>
+
+            <% if b_exp.present? %>
+              <div style="font-size:0.75rem; color:var(--color-accent); font-weight:600; margin-bottom:0.5rem;">
+                <i class="fa-solid fa-bullseye"></i> <%= b_exp %>
+              </div>
+            <% end %>
+
+            <!-- Authority badges -->
+            <% if b_auths.present? %>
+              <div style="display:flex; flex-wrap:wrap; gap:0.35rem; margin-top:0.4rem;">
+                <% b_auths.first(5).each do |auth| %>
+                  <span class="catalog-auth-badge clickable-auth-badge" style="font-size:0.72rem; padding:0.15rem 0.45rem; background:white; border:1px solid var(--border-light); border-radius:10px; color:var(--text-primary); cursor:pointer;">
+                    <i class="fa-solid fa-tag" style="color:var(--color-authority); font-size:0.65rem;"></i> <%= auth[:name] || auth.name %>
+                  </span>
+                <% end %>
+                <% if b_auths.size > 5 %>
+                  <span style="font-size:0.7rem; color:var(--text-muted); padding:0.15rem 0.3rem;">
+                    +<%= b_auths.size - 5 %> más
+                  </span>
+                <% end %>
+              </div>
+            <% end %>
+          </div>
+
+          <div style="display:flex; flex-direction:column; align-items:flex-end; gap:0.5rem; flex-shrink:0;">
+            <a href="<%= catalog_graph_path(b_id) %>" class="btn btn-secondary" style="font-size:0.78rem; padding:0.3rem 0.6rem; white-space:nowrap;">
+              <i class="fa-solid fa-diagram-project"></i> Ver Grafo (<%= b_conns %>)
+            </a>
+          </div>
+        </div>
+      <% end %>
+    <% end %>
+  </div>
+<% end %>

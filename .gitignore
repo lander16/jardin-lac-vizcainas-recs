@@ -27,3 +27,7 @@ web/node_modules/
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# Ignore key files for decrypting credentials and more.
+/config/*.key
+

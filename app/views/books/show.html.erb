@@ -1,0 +1,110 @@
+<% content_for :title, "#{@book.title} - Jardín LAC Vizcaínas" %>
+
+<div style="margin-bottom:1.5rem;">
+  <button class="btn btn-secondary" onclick="window.history.back()" style="padding:0.4rem 0.8rem; font-size:0.85rem; font-weight:600;">
+    <i class="fa-solid fa-arrow-left"></i> Volver
+  </button>
+</div>
+
+<div class="dashboard-grid">
+  <!-- Book Details Column -->
+  <div class="glass-card">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:1.5rem;">
+      <div>
+        <span class="source-badge content" style="font-size:0.7rem; margin-bottom:0.5rem; display:inline-block;">
+          <i class="fa-solid fa-book"></i> Código de la Obra: <%= @book.id %>
+        </span>
+        <h1 style="font-family:var(--font-display); font-size:2.25rem; font-weight:700; line-height:1.2; margin-top:0.25rem;">
+          <%= @book.title %>
+        </h1>
+        <% if @book.author.present? %>
+          <div style="font-size:1.05rem; color:var(--text-secondary); margin-top:0.35rem; font-weight:600;">
+            <i class="fa-solid fa-feather"></i> <%= @book.author %>
+          </div>
+        <% end %>
+      </div>
+      
+      <a href="<%= catalog_graph_path(@book.id) %>" class="btn btn-primary" style="padding:0.4rem 0.8rem; font-size:0.8rem; white-space:nowrap;">
+        <i class="fa-solid fa-diagram-project"></i> Grafo de Autoridades
+      </a>
+    </div>
+    
+    <div style="margin-bottom:2rem;">
+      <h3 style="font-family:var(--font-display); font-weight:700; font-size:1.25rem; margin-bottom:0.75rem; color:var(--text-primary); border-bottom:1px solid var(--border-light); padding-bottom:0.4rem;">
+        Sinopsis / Descripción
+      </h3>
+      <p style="color:var(--text-secondary); font-size:0.95rem; line-height:1.6; white-space:pre-line;">
+        <%= @book.description.presence || "No hay descripción disponible para esta obra en la base de datos." %>
+      </p>
+    </div>
+
+    <!-- Authorities Tags -->
+    <% if @book.authorities.any? %>
+      <div style="margin-bottom:2rem;">
+        <h3 style="font-family:var(--font-display); font-weight:700; font-size:1.25rem; margin-bottom:0.75rem; color:var(--text-primary); border-bottom:1px solid var(--border-light); padding-bottom:0.4rem;">
+          Autoridades Catalogadas
+        </h3>
+        <div style="display:flex; flex-wrap:wrap; gap:0.4rem;">
+          <% @book.authorities.each do |auth| %>
+            <span class="catalog-auth-badge clickable-auth-badge" style="font-size:0.75rem; padding:0.25rem 0.6rem; background:var(--bg-secondary); border:1px solid var(--border-light); border-radius:12px; color:var(--text-primary);">
+              <i class="fa-solid fa-tag" style="color:var(--color-authority); font-size:0.7rem;"></i>
+              <strong><%= auth.authority_type %>:</strong> <%= auth.name %>
+            </span>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+
+    <!-- Checkout History -->
+    <div>
+      <h3 style="font-family:var(--font-display); font-weight:700; font-size:1.25rem; margin-bottom:0.75rem; color:var(--text-primary); border-bottom:1px solid var(--border-light); padding-bottom:0.4rem;">
+        Historial de Lectores (<%= @checked_by.size %> lectores)
+      </h3>
+      <% if @checked_by.empty? %>
+        <p style="color:var(--text-muted); font-style:italic; font-size:0.9rem;">Esta obra no ha sido solicitada por ningún lector todavía.</p>
+      <% else %>
+        <div style="display:flex; flex-wrap:wrap; gap:0.5rem;">
+          <% @checked_by.each do |patron| %>
+            <a href="<%= user_path(patron.id) %>" class="btn btn-secondary" style="font-size:0.8rem; padding:0.3rem 0.6rem; text-decoration:none;">
+              <i class="fa-regular fa-user"></i> <%= patron.name %>
+            </a>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <!-- Similar Books Column -->
+  <div class="glass-card">
+    <div class="section-title">
+      <i class="fa-solid fa-tag" style="color:var(--color-content)"></i>
+      <h2>Títulos Similares</h2>
+    </div>
+    <p style="font-size:0.8rem; color:var(--text-secondary); margin-bottom:1.25rem; line-height:1.4;">Generados mediante la distancia vectorial de similitud coseno de los títulos y sinopsis.</p>
+    
+    <div style="display:flex; flex-direction:column; gap:0.75rem;">
+      <% if @similar_books.empty? %>
+        <div style="text-align:center; padding:2rem; color:var(--text-secondary); font-style:italic;">
+          No se encontraron obras similares.
+        </div>
+      <% else %>
+        <% @similar_books.each do |sim| %>
+          <% pct = (sim.similarity * 100).round %>
+          <div style="display:flex; flex-direction:column; background:var(--bg-primary); padding:0.75rem; border-radius:0.25rem; border:1px solid var(--border-light)">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.5rem; gap:0.5rem; min-width:0;">
+              <a href="<%= book_path(sim.similar_book.id) %>" style="color:var(--text-primary); font-weight:600; font-size:0.88rem; text-decoration:none; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1;" title="<%= sim.similar_book.title %>">
+                <%= sim.similar_book.title %>
+              </a>
+              <span class="similarity-badge" style="flex-shrink:0;"><%= pct %>% afinidad</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:0.5rem;">
+              <div class="score-track" style="height:4px; flex:1; background:#e3dbcf;">
+                <div class="score-fill content" style="width: <%= pct %>%"></div>
+              </div>
+            </div>
+          </div>
+        <% end %>
+      <% end %>
+    </div>
+  </div>
+</div>

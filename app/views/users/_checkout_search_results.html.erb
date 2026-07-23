@@ -1,0 +1,26 @@
+<%= turbo_frame_tag "checkout-search-results" do %>
+  <div style="display:flex; flex-direction:column; gap:0.5rem; max-height:280px; overflow-y:auto;">
+    <% if books.empty? %>
+      <div style="text-align:center; padding:1.5rem; color:var(--text-muted); font-size:0.85rem;">
+        No se encontraron obras que coincidan con la búsqueda.
+      </div>
+    <% else %>
+      <% books.each do |book| %>
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:0.5rem 0.75rem; background:var(--bg-primary); border:1px solid var(--border-light); border-radius:4px; gap:0.75rem;">
+          <div style="min-width:0; flex:1;">
+            <div style="font-size:0.85rem; font-weight:600; color:var(--text-primary); text-overflow:ellipsis; overflow:hidden; white-space:nowrap;">
+              <%= book.title %>
+            </div>
+            <% if book.author.present? %>
+              <div style="font-size:0.75rem; color:var(--text-secondary);"><%= book.author %></div>
+            <% end %>
+          </div>
+
+          <%= button_to user_checkout_path(patron.id), method: :post, params: { book_id: book.id }, class: "btn btn-primary", style: "padding:0.25rem 0.55rem; font-size:0.75rem; white-space:nowrap;", data: { turbo_frame: "_top" } do %>
+            <i class="fa-solid fa-plus"></i> Prestar
+          <% end %>
+        </div>
+      <% end %>
+    <% end %>
+  </div>
+<% end %>

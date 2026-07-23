@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: jardin-lac-vizcainas-recs
+    env: ruby
+    buildCommand: bin/render-build.sh
+    startCommand: bundle exec puma -C config/puma.rb
+    envVars:
+      - key: RAILS_ENV
+        value: production
+      - key: SECRET_KEY_BASE
+        generateValue: true
+      - key: RAILS_SERVE_STATIC_FILES
+        value: "true"
+      - key: RAILS_LOG_TO_STDOUT
+        value: "true"
+    disk:
+      name: sqlite-data
+      mountPath: /opt/render/project/src/storage
+      sizeGB: 1
