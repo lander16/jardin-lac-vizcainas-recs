@@ -35,8 +35,16 @@
                             else "Combinado"
                             end %>
 
+            <% badge_icon = case rec[:primary_source]
+                            when "content" then "fa-solid fa-book"
+                            when "collaborative" then "fa-solid fa-users"
+                            when "authority" then "fa-solid fa-tags"
+                            when "all" then "fa-solid fa-wand-magic-sparkles"
+                            else "fa-solid fa-layer-group"
+                            end %>
+
             <span class="source-badge <%= badge_class %>" style="font-size:0.72rem; padding:0.2rem 0.55rem;">
-              <i class="fa-solid fa-sparkles"></i> <%= badge_text %>
+              <i class="<%= badge_icon %>"></i> <%= badge_text %>
             </span>
 
             <span class="similarity-badge" style="font-size:0.82rem; font-weight:700;">
