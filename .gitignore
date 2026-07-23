@@ -31,3 +31,18 @@ Thumbs.db
 # Ignore key files for decrypting credentials and more.
 /config/*.key
 
+# Ignore SQLite databases
+/db/*.sqlite3
+/db/*.sqlite3-*
+
+# Ignore storage and tmp
+/storage/*
+!/storage/.keep
+/tmp/cache/*
+/tmp/pids/*
+/tmp/sockets/*
+/tmp/storage/*
+!/tmp/storage/.keep
+/log/*.log
+/public/assets
+
