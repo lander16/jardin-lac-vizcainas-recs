@@ -50,7 +50,7 @@ export default class extends Controller {
       1: "#f43f5e", // Target user (crimson)
       2: "#56697a", // Target book (slate)
       3: "#52755e", // Similar user (sage)
-      4: "#b38f4d"  # Collab book (gold)
+      4: "#b38f4d"  // Collab book (gold)
     }
 
     // Force simulation
