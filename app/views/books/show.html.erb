@@ -80,7 +80,7 @@
       <i class="fa-solid fa-tag" style="color:var(--color-content)"></i>
       <h2>Títulos Similares</h2>
     </div>
-    <p style="font-size:0.8rem; color:var(--text-secondary); margin-bottom:1.25rem; line-height:1.4;">Generados mediante la distancia vectorial de similitud coseno de los títulos y sinopsis.</p>
+    <p style="font-size:0.8rem; color:var(--text-secondary); margin-bottom:1.25rem; line-height:1.4;">Generados mediante la distancia vectorial de similitud y descriptores catalográficos compartidos.</p>
     
     <div style="display:flex; flex-direction:column; gap:0.75rem;">
       <% if @similar_books.empty? %>
@@ -89,14 +89,20 @@
         </div>
       <% else %>
         <% @similar_books.each do |sim| %>
-          <% pct = (sim.similarity * 100).round %>
+          <% b = sim[:book] %>
+          <% pct = sim[:percentage] %>
           <div style="display:flex; flex-direction:column; background:var(--bg-primary); padding:0.75rem; border-radius:0.25rem; border:1px solid var(--border-light)">
-            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.5rem; gap:0.5rem; min-width:0;">
-              <a href="<%= book_path(sim.similar_book.id) %>" style="color:var(--text-primary); font-weight:600; font-size:0.88rem; text-decoration:none; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1;" title="<%= sim.similar_book.title %>">
-                <%= sim.similar_book.title %>
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.35rem; gap:0.5rem; min-width:0;">
+              <a href="<%= book_path(b.id) %>" style="color:var(--text-primary); font-weight:600; font-size:0.88rem; text-decoration:none; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1;" title="<%= b.title %>">
+                <%= b.title %>
               </a>
               <span class="similarity-badge" style="flex-shrink:0;"><%= pct %>% afinidad</span>
             </div>
+            <% if b.author.present? %>
+              <div style="font-size:0.75rem; color:var(--text-secondary); margin-bottom:0.4rem;">
+                <i class="fa-solid fa-feather"></i> <%= b.author %>
+              </div>
+            <% end %>
             <div style="display:flex; align-items:center; gap:0.5rem;">
               <div class="score-track" style="height:4px; flex:1; background:#e3dbcf;">
                 <div class="score-fill content" style="width: <%= pct %>%"></div>
