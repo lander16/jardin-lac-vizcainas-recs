@@ -13,7 +13,3 @@ services:
         value: "true"
       - key: RAILS_LOG_TO_STDOUT
         value: "true"
-    disk:
-      name: sqlite-data
-      mountPath: /opt/render/project/src/storage
-      sizeGB: 1
