@@ -9,7 +9,7 @@
     <% users.each do |user| %>
       <tr>
         <td>
-          <a href="<%= user_path(user.id) %>" style="color:var(--text-primary); font-weight:600; text-decoration:none;">
+          <a href="<%= user_path(user.id) %>" data-turbo-frame="_top" style="color:var(--text-primary); font-weight:600; text-decoration:none;">
             <%= user.name %>
           </a>
         </td>
@@ -20,10 +20,10 @@
         </td>
         <td class="text-right">
           <div style="display:inline-flex; gap:0.5rem;">
-            <a href="<%= user_path(user.id) %>" class="btn btn-primary" style="padding:0.35rem 0.75rem; font-size:0.8rem;">
+            <a href="<%= user_path(user.id) %>" data-turbo-frame="_top" class="btn btn-primary" style="padding:0.35rem 0.75rem; font-size:0.8rem;">
               Recomendar
             </a>
-            <a href="<%= user_graph_path(user.id) %>" class="btn btn-secondary" style="padding:0.35rem 0.75rem; font-size:0.8rem;">
+            <a href="<%= user_graph_path(user.id) %>" data-turbo-frame="_top" class="btn btn-secondary" style="padding:0.35rem 0.75rem; font-size:0.8rem;">
               Grafo
             </a>
           </div>
