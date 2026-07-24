@@ -1,7 +1,7 @@
 services:
   - type: web
     name: jardin-lac-vizcainas-recs
-    env: ruby
+    runtime: ruby
     buildCommand: bin/render-build.sh
     startCommand: bundle exec puma -C config/puma.rb
     envVars:
