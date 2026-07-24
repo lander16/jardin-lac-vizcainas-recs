@@ -36,9 +36,9 @@ class UsersController < ApplicationController
     @books = if query.present? && query.length >= 2
                Book.where("LOWER(title) LIKE ? OR LOWER(author) LIKE ?", "%#{query}%", "%#{query}%")
                    .limit(20)
-             else
+    else
                []
-             end
+    end
 
     render partial: "users/checkout_search_results", locals: { books: @books, patron: @patron }
   end

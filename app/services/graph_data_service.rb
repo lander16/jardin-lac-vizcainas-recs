@@ -148,7 +148,7 @@ class GraphDataService
           type: "authority",
           auth_type: auth.authority_type,
           group: 2,
-          radius: [8 + (auth.books_count * 1.5), 16].min
+          radius: [ 8 + (auth.books_count * 1.5), 16 ].min
         }
         added_nodes << auth_node_id
       end

@@ -9,6 +9,6 @@ class CreateUserSimilarities < ActiveRecord::Migration[8.1]
     end
     add_index :user_similarities, :patron_id
     add_index :user_similarities, :similar_patron_id
-    add_index :user_similarities, [:patron_id, :similar_patron_id], unique: true
+    add_index :user_similarities, [ :patron_id, :similar_patron_id ], unique: true
   end
 end

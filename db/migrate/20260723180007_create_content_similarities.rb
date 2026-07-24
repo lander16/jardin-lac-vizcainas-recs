@@ -9,6 +9,6 @@ class CreateContentSimilarities < ActiveRecord::Migration[8.1]
     end
     add_index :content_similarities, :book_id
     add_index :content_similarities, :similar_book_id
-    add_index :content_similarities, [:book_id, :similar_book_id], unique: true
+    add_index :content_similarities, [ :book_id, :similar_book_id ], unique: true
   end
 end

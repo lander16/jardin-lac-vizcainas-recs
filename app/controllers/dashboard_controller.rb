@@ -19,9 +19,9 @@ class DashboardController < ApplicationController
                Patron.where("LOWER(name) LIKE ? OR LOWER(email) LIKE ? OR cardnumber LIKE ?",
                             "%#{query}%", "%#{query}%", "%#{query}%")
                      .order(:name)
-             else
+    else
                Patron.order(:name)
-             end
+    end
 
     render partial: "dashboard/users_table", locals: { users: @users }
   end

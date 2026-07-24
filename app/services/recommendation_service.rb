@@ -55,11 +55,11 @@ class RecommendationService
       sources << "authority" if a_raw > 0
 
       primary_source = case sources.length
-                       when 3 then "all"
-                       when 2 then "multiple"
-                       when 1 then sources.first
-                       else "content"
-                       end
+      when 3 then "all"
+      when 2 then "multiple"
+      when 1 then sources.first
+      else "content"
+      end
 
       {
         book_id: bid,

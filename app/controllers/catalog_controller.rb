@@ -5,11 +5,11 @@ class CatalogController < ApplicationController
     @total_connections = BookConnection.count
 
     @total_links = BookAuthority.count
-    @avg_authorities_per_book = (@total_links.to_f / [@total_books, 1].max).round(1)
-    @avg_books_per_authority = (@total_links.to_f / [@total_authorities, 1].max).round(1)
+    @avg_authorities_per_book = (@total_links.to_f / [ @total_books, 1 ].max).round(1)
+    @avg_books_per_authority = (@total_links.to_f / [ @total_authorities, 1 ].max).round(1)
 
     connected_book_ids = (BookConnection.pluck(:source_book_id) + BookConnection.pluck(:target_book_id)).uniq.size
-    @percentage_connected = ((connected_book_ids.to_f / [@total_books, 1].max) * 100).round(1)
+    @percentage_connected = ((connected_book_ids.to_f / [ @total_books, 1 ].max) * 100).round(1)
 
     @type_counts = Authority.group(:authority_type).order("COUNT(id) DESC").count
 
@@ -28,7 +28,7 @@ class CatalogController < ApplicationController
 
     @books = if query.present?
                CatalogSearchService.search(query, limit: limit)
-             else
+    else
                Book.includes(:authorities).limit(limit).map do |b|
                  {
                    biblio_id: b.id,
@@ -39,7 +39,7 @@ class CatalogController < ApplicationController
                    authorities: b.authorities.map { |a| { authority_id: a.id, name: a.name, type: a.authority_type } }
                  }
                end
-             end
+    end
 
     render partial: "catalog/search_results", locals: { books: @books, query: query }
   end

@@ -10,6 +10,6 @@ class CreateCheckouts < ActiveRecord::Migration[8.1]
     end
     add_index :checkouts, :patron_id
     add_index :checkouts, :book_id
-    add_index :checkouts, [:patron_id, :book_id]
+    add_index :checkouts, [ :patron_id, :book_id ]
   end
 end

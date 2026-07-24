@@ -9,6 +9,6 @@ class CreateBookConnections < ActiveRecord::Migration[8.1]
     end
     add_index :book_connections, :source_book_id
     add_index :book_connections, :target_book_id
-    add_index :book_connections, [:source_book_id, :target_book_id], unique: true
+    add_index :book_connections, [ :source_book_id, :target_book_id ], unique: true
   end
 end

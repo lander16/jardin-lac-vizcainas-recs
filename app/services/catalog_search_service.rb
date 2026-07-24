@@ -31,18 +31,18 @@ class CatalogSearchService
       weighted_author = author_score * WEIGHTS[:author]
       weighted_auth = best_auth_score * WEIGHTS[:authority]
 
-      best_score = [weighted_title, weighted_author, weighted_auth].max
+      best_score = [ weighted_title, weighted_author, weighted_auth ].max
 
       next if best_score < THRESHOLD
 
       explanation = if weighted_author >= weighted_title && weighted_author >= weighted_auth
                       "Coincidencia en autor: '#{book.author}'"
-                    elsif weighted_title >= weighted_auth
+      elsif weighted_title >= weighted_auth
                       "Coincidencia en título: '#{book.title}'"
-                    else
+      else
                       matched_auth = book.authorities.find { |a| calculate_token_score(query_tokens, normalize_text(a.name)) >= THRESHOLD }
                       "Coincidencia en autoridad: '#{matched_auth&.name || 'Descriptor'}'"
-                    end
+      end
 
       scored_books << {
         biblio_id: book.id,
@@ -82,10 +82,10 @@ class CatalogSearchService
           best_t_score = 100.0
         elsif tt.start_with?(qt) && qt.length >= 3
           score = 100.0 - ((tt.length - qt.length) * 5)
-          best_t_score = [best_t_score, [score, 60.0].max].max
+          best_t_score = [ best_t_score, [ score, 60.0 ].max ].max
         elsif qt.start_with?(tt) && tt.length >= 3
           score = 100.0 - ((qt.length - tt.length) * 5)
-          best_t_score = [best_t_score, [score, 60.0].max].max
+          best_t_score = [ best_t_score, [ score, 60.0 ].max ].max
         end
       end
       best_t_score

@@ -106,7 +106,7 @@ namespace :import do
     puts "Importing checkouts..."
     now = Time.current
     records = []
-    
+
     CSV.foreach(file_path, headers: true) do |row|
       records << {
         patron_id: row["user_id"],
@@ -181,7 +181,7 @@ namespace :import do
     end
 
     # Deduplicate book_authorities by [book_id, authority_id]
-    unique_ba = book_auth_records.uniq { |r| [r[:book_id], r[:authority_id]] }
+    unique_ba = book_auth_records.uniq { |r| [ r[:book_id], r[:authority_id] ] }
     unique_ba.each_slice(1000) do |slice|
       BookAuthority.insert_all(slice)
     end
@@ -223,7 +223,7 @@ namespace :import do
       end
     end
 
-    records.uniq! { |r| [r[:source_book_id], r[:target_book_id]] }
+    records.uniq! { |r| [ r[:source_book_id], r[:target_book_id] ] }
 
     records.each_slice(1000) do |slice|
       BookConnection.insert_all(slice)
@@ -264,7 +264,7 @@ namespace :import do
       end
     end
 
-    records.uniq! { |r| [r[:book_id], r[:similar_book_id]] }
+    records.uniq! { |r| [ r[:book_id], r[:similar_book_id] ] }
 
     records.each_slice(1000) do |slice|
       ContentSimilarity.insert_all(slice)
@@ -305,7 +305,7 @@ namespace :import do
       end
     end
 
-    records.uniq! { |r| [r[:patron_id], r[:similar_patron_id]] }
+    records.uniq! { |r| [ r[:patron_id], r[:similar_patron_id] ] }
 
     records.each_slice(1000) do |slice|
       UserSimilarity.insert_all(slice)
