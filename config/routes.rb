@@ -24,7 +24,7 @@ Rails.application.routes.draw do
 
   # JSON API for D3 Graph visualizations
   namespace :api do
-    get "graph/:id", to: "graphs#user"
-    get "catalog/graph/:id", to: "graphs#catalog"
+    get "graph/:id", to: "graphs#user", as: :user_graph
+    get "catalog/graph/:id", to: "graphs#catalog", as: :catalog_graph
   end
 end
