@@ -143,8 +143,6 @@
       <h2>Sugerencias Híbridas de Lectura</h2>
     </div>
 
-    <%= turbo_frame_tag "recommendations-list" do %>
-      <%= render "users/recommendations_list", recommendations: @recommendations %>
-    <% end %>
+    <%= render "users/recommendations_list", recommendations: @recommendations %>
   </div>
 </div>

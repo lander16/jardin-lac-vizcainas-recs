@@ -68,9 +68,7 @@
               <th style="text-align:right;">Acciones</th>
             </tr>
           </thead>
-          <%= turbo_frame_tag "users-table", src: nil do %>
-            <%= render "dashboard/users_table", users: @users %>
-          <% end %>
+          <%= render "dashboard/users_table", users: @users %>
         </table>
       </div>
     </div>

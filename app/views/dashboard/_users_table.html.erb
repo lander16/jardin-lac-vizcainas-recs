@@ -1,4 +1,4 @@
-<tbody id="users-table-body">
+<%= turbo_frame_tag "users-table", tag: "tbody" do %>
   <% if users.empty? %>
     <tr>
       <td class="no-label" colspan="5" style="text-align:center;color:var(--text-secondary);padding:2rem;width:100%;">
@@ -31,4 +31,4 @@
       </tr>
     <% end %>
   <% end %>
-</tbody>
+<% end %>

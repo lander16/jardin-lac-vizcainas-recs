@@ -1,3 +1,4 @@
+<%= turbo_frame_tag "recommendations-list" do %>
 <div style="display:flex; flex-direction:column; gap:1rem;">
   <% if recommendations.empty? %>
     <div style="text-align:center; padding:3rem; color:var(--text-secondary);">
@@ -73,3 +74,4 @@
     <% end %>
   <% end %>
 </div>
+<% end %>
