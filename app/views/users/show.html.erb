@@ -53,7 +53,7 @@
             <span style="color:var(--color-content);"><i class="fa-solid fa-book"></i> Contenido</span>
             <span data-balance-target="contentVal"><%= (@w_content * 100).round %>%</span>
           </div>
-          <input type="range" min="0" max="1" step="0.01" value="<%= @w_content %>" class="slider-content"
+          <input type="range" id="slider-content" aria-label="Ponderación de Contenido" min="0" max="1" step="0.01" value="<%= @w_content %>" class="slider-content"
                  data-balance-target="contentSlider" data-action="input->balance#update">
         </div>
 
@@ -62,7 +62,7 @@
             <span style="color:var(--color-collab);"><i class="fa-solid fa-users"></i> Lectores Afines</span>
             <span data-balance-target="collabVal"><%= (@w_collab * 100).round %>%</span>
           </div>
-          <input type="range" min="0" max="1" step="0.01" value="<%= @w_collab %>" class="slider-collab"
+          <input type="range" id="slider-collab" aria-label="Ponderación de Lectores Afines" min="0" max="1" step="0.01" value="<%= @w_collab %>" class="slider-collab"
                  data-balance-target="collabSlider" data-action="input->balance#update">
         </div>
 
@@ -71,7 +71,7 @@
             <span style="color:var(--color-authority);"><i class="fa-solid fa-tags"></i> Autoridades</span>
             <span data-balance-target="authVal"><%= (@w_auth * 100).round %>%</span>
           </div>
-          <input type="range" min="0" max="1" step="0.01" value="<%= @w_auth %>" class="slider-auth"
+          <input type="range" id="slider-auth" aria-label="Ponderación de Autoridades Catalográficas" min="0" max="1" step="0.01" value="<%= @w_auth %>" class="slider-auth"
                  data-balance-target="authSlider" data-action="input->balance#update">
         </div>
       </div>
@@ -84,8 +84,8 @@
           <i class="fa-solid fa-clock-rotate-left" style="color:var(--color-collab)"></i>
           <h2>Historial de Lectura</h2>
         </div>
-        <button class="btn btn-primary" style="padding:0.3rem 0.6rem; font-size:0.75rem;" data-action="click->modal#open">
-          <i class="fa-solid fa-plus"></i> Simular Préstamo
+        <button class="btn btn-primary" style="padding:0.35rem 0.75rem; font-size:0.8rem;" data-action="click->modal#open" aria-label="Registrar nuevo préstamo simulado">
+          <i class="fa-solid fa-plus"></i> Registrar Préstamo
         </button>
       </div>
 
@@ -115,14 +115,15 @@
       <dialog id="checkout-modal" class="modal-overlay" data-modal-target="dialog">
         <div class="modal-card" style="max-width:500px; width:90%; background:white; padding:1.5rem; border-radius:8px; box-shadow:0 10px 40px rgba(0,0,0,0.2); position:relative;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; border-bottom:1px solid var(--border-light); padding-bottom:0.75rem;">
-            <h3 style="font-family:var(--font-display); font-size:1.25rem; font-weight:700; margin:0; color:var(--text-primary);">Simular Préstamo</h3>
-            <button style="background:none; border:none; font-size:1.5rem; cursor:pointer; color:var(--text-secondary);" data-action="click->modal#close">&times;</button>
+            <h3 style="font-family:var(--font-display); font-size:1.25rem; font-weight:700; margin:0; color:var(--text-primary);">Registrar Préstamo Simulado</h3>
+            <button style="background:none; border:none; font-size:1.5rem; cursor:pointer; color:var(--text-secondary);" data-action="click->modal#close" aria-label="Cerrar modal">&times;</button>
           </div>
           
           <div data-controller="search" data-search-url-value="<%= user_checkout_search_path(@patron.id) %>">
             <div class="search-container" style="margin-bottom:1rem;">
               <i class="fa-solid fa-magnifying-glass search-icon"></i>
-              <input type="text" class="search-input" placeholder="Buscar libro en el catálogo por título o autor..." data-action="input->search#input">
+              <label for="checkout-book-search-input" class="sr-only">Buscar libro en el catálogo por título o autor</label>
+              <input type="text" id="checkout-book-search-input" class="search-input" placeholder="Buscar libro en el catálogo por título o autor..." data-action="input->search#input">
             </div>
 
             <%= turbo_frame_tag "checkout-search-results" do %>

@@ -50,7 +50,9 @@
     
     <div class="search-container" data-controller="search" data-search-url-value="<%= users_search_path %>">
       <i class="fa-solid fa-magnifying-glass search-icon"></i>
+      <label for="dashboard-user-search" class="sr-only">Buscar lectores por nombre, correo o credencial</label>
       <input type="text" 
+             id="dashboard-user-search"
              class="search-input" 
              placeholder="Buscar lectores por nombre, correo o número de credencial..."
              data-action="input->search#input">

@@ -58,7 +58,7 @@
     <!-- Checkout History -->
     <div>
       <h3 style="font-family:var(--font-display); font-weight:700; font-size:1.25rem; margin-bottom:0.75rem; color:var(--text-primary); border-bottom:1px solid var(--border-light); padding-bottom:0.4rem;">
-        Historial de Lectores (<%= @checked_by.size %> lectores)
+        Historial de Lecturas (<%= @checked_by.size %> <%= @checked_by.size == 1 ? "lector" : "lectores" %>)
       </h3>
       <% if @checked_by.empty? %>
         <p style="color:var(--text-muted); font-style:italic; font-size:0.9rem;">Esta obra no ha sido solicitada por ningún lector todavía.</p>

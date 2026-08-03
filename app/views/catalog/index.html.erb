@@ -78,7 +78,9 @@
 
     <div class="search-container" data-controller="search" data-search-url-value="<%= catalog_search_path %>">
       <i class="fa-solid fa-magnifying-glass search-icon"></i>
+      <label for="catalog-search-input" class="sr-only">Buscar por título, autor, tema o lugar</label>
       <input type="text" 
+             id="catalog-search-input"
              class="search-input" 
              placeholder="Buscar por título, autor, tema o lugar (ej. 'Hess', 'México', 'Revolución')..."
              data-action="input->search#input">

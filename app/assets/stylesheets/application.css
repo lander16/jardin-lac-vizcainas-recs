@@ -1672,4 +1672,47 @@ svg text {
   }
 }
 
+/* =============================================================================
+   Accessibility, Focus Rings & Mobile Touch Target Improvements
+   ============================================================================= */
+
+/* Visible focus rings for keyboard users */
+:focus-visible {
+  outline: 2px solid var(--color-accent) !important;
+  outline-offset: 2px !important;
+}
+
+/* Screen reader utility class */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* Mobile input font-size to prevent unwanted iOS page zoom */
+@media (max-width: 768px) {
+  input[type="text"], input[type="search"], select, textarea {
+    font-size: 16px !important;
+  }
+
+  /* Minimum touch target height for mobile */
+  .btn, .nav-link, .catalog-type-chip {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  /* Responsive Graph Height on Mobile */
+  #graph-container, #catalog-graph {
+    height: 400px !important;
+  }
+}
+
+
 

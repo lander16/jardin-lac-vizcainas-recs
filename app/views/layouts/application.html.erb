@@ -32,7 +32,7 @@
         <i class="fa-solid fa-book-open"></i>
         <span>Jardín LAC Vizcaínas</span>
       </a>
-      <nav class="nav-links">
+      <nav class="nav-links" aria-label="Navegación principal">
         <a href="<%= root_path %>" class="nav-link <%= 'active' if controller_name == 'dashboard' || controller_name == 'users' || controller_name == 'books' %>" id="nav-dashboard">
           <i class="fa-solid fa-chart-line"></i> Inicio
         </a>
@@ -42,7 +42,7 @@
       </nav>
     </header>
 
-    <main class="container" id="router-view">
+    <main class="container" id="router-view" role="main">
       <%= yield %>
     </main>
 
