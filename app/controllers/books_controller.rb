@@ -32,11 +32,11 @@ class BooksController < ApplicationController
                          .order("shared_count DESC, books.title ASC")
                          .limit(10)
 
-        max_possible = [auth_ids.size, 1].max.to_f
+        max_possible = [ auth_ids.size, 1 ].max.to_f
 
         @similar_books = candidates.map do |b|
           shared_ratio = (b.shared_count.to_f / max_possible)
-          score_pct = [((shared_ratio * 60) + 40).round, 98].min
+          score_pct = [ ((shared_ratio * 60) + 40).round, 98 ].min
           {
             book: b,
             similarity: shared_ratio,
