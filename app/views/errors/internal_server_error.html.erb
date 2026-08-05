@@ -1,0 +1,26 @@
+<% content_for :title, "Error del Servidor (500) - Jardín LAC Vizcaínas" %>
+
+<div style="max-width: 650px; margin: 3rem auto; text-align: center;">
+  <div class="glass-card" style="padding: 2.5rem 1.5rem; text-align: center;">
+    <div style="font-size: 3.5rem; color: var(--color-gold); margin-bottom: 1rem;">
+      <i class="fa-solid fa-triangle-exclamation"></i>
+    </div>
+    
+    <h1 style="font-family: var(--font-display); font-size: 2.2rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.75rem;">
+      Error Temporal en el Servidor (500)
+    </h1>
+    
+    <p style="font-size: 1rem; color: var(--text-secondary); line-height: 1.6; margin-bottom: 1.75rem; max-width: 500px; margin-left: auto; margin-right: auto;">
+      Ocurrió una interrupción al procesar la solicitud en el motor de recomendaciones. Nuestro equipo técnico ha sido notificado.
+    </p>
+
+    <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+      <a href="<%= root_path %>" class="btn btn-primary" style="padding: 0.6rem 1.25rem;">
+        <i class="fa-solid fa-house"></i> Volver al Inicio
+      </a>
+      <a href="javascript:history.back()" class="btn btn-outline" style="padding: 0.6rem 1.25rem;">
+        <i class="fa-solid fa-arrow-left"></i> Regresar
+      </a>
+    </div>
+  </div>
+</div>
