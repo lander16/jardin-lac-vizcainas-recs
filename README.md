@@ -4,6 +4,25 @@ Un sistema integral de recomendaciones de lectura híbridas y exploración bibli
 
 ---
 
+## 📸 Capturas de Pantalla de la Aplicación
+
+| Panel de Inicio y Directorio de Lectores | Perfil del Lector y Recomendaciones Híbridas |
+| :---: | :---: |
+| ![Panel de Inicio](public/screenshots/01_home_dashboard.png) | ![Perfil de Lector](public/screenshots/02_user_profile_hybrid.png) |
+| *Búsqueda en tiempo real y directorio de lectores con estadísticas de préstamos.* | *Deslizadores interactivos de ponderación (Contenido, Lectores Afines, Autoridades).* |
+
+| Grafo Interactivo de Afinidad entre Lectores | Explorador del Catálogo e Inspector MARC21 |
+| :---: | :---: |
+| ![Grafo de Afinidad](public/screenshots/03_user_affinity_graph.png) | ![Explorador del Catálogo](public/screenshots/04_catalog_explorer.png) |
+| *Física de fuerza dirigida D3.js conectando lectores y obras afines.* | *Búsqueda rápida en acervo con desglose por autoridades catalográficas.* |
+
+| Detalle de Obra y Similitud Híbrida | Red de Autoridades Catalográficas de la Obra |
+| :---: | :---: |
+| ![Detalle de Obra](public/screenshots/05_book_detail_similarities.png) | ![Grafo de Autoridades](public/screenshots/06_catalog_authority_graph.png) |
+| *Motor de similitud en 2 niveles (Vectores TF-IDF y Autoridades compartidas).* | *Visualización en red de autores, materias, lugares y obras vinculadas.* |
+
+---
+
 ## 📋 Tabla de Contenidos
 - [🏛 Contexto y Objetivos](#-contexto-y-objetivos)
 - [🏗 Arquitectura General del Sistema](#-arquitectura-general-del-sistema)
@@ -23,7 +42,7 @@ Un sistema integral de recomendaciones de lectura híbridas y exploración bibli
 - [🔄 Ingesta de Datos e Idempotencia (Rake Tasks)](#-ingesta-de-datos-e-idempotencia-rake-tasks)
 - [🚀 Guía de Instalación y Desarrollo Local](#-guía-de-instalación-y-desarrollo-local)
 - [🧪 Pruebas, Calidad de Código y Seguridad](#-pruebas-calidad-de-código-y-seguridad)
-- [☁️ Despliegue en Render y Integración Continua (CI/CD)](#️-despliegue-en-render-y-integración-continua-cicd)
+- [☁️ Despliegue en Render e Integración Continua (CI/CD)](#️-despliegue-en-render-e-integración-continua-cicd)
 
 ---
 
@@ -74,7 +93,7 @@ Toda la lógica de procesamiento masivo de datos se ejecuta en Python (`pipeline
   - `600 / 610 / 650 / 651 / 655`: Descriptores temáticos, corporativos, geográficos y de forma/género.
 
 ### 2. Enriquecimiento con Datos de Goodreads
-- **Scripts**: `pipeline/match_koha_goodreads.py`
+- **Script**: `pipeline/match_koha_goodreads.py`
 - Mapea obras del catálogo local con registros de Goodreads para enriquecer descripciones, portadas y métricas globales de popularidad.
 
 ### 3. Matriz de Similitud Vectorial de Contenido (TF-IDF + Coseno)
@@ -136,7 +155,7 @@ La aplicación web en Rails 8 provee una interfaz ágil, reactiva y responsive p
 2. **`Patron`**: Usuario o lector del sistema (nombre, credencial, correo).
 3. **`Checkout`**: Historial de préstamos (registra préstamos históricos e interacciones simuladas en vivo).
 4. **`Authority`**: Entidad de autoridad MARC21 (autores, materias, lugares, periodos).
-5. **`BookAuthority`**: Tabla de unió n entre obras y sus descriptores.
+5. **`BookAuthority`**: Tabla de unión entre obras y sus descriptores.
 6. **`BookConnection`**: Ponderación de conexiones entre dos libros basada en autoridades compartidas.
 7. **`ContentSimilarity`**: Par de similitud temática precalculada entre dos libros (0.0 a 1.0).
 8. **`UserSimilarity`**: Par de similitud de comportamiento entre dos lectores (0.0 a 1.0).
@@ -218,7 +237,7 @@ Esta tarea ejecuta secuencialmente:
 - **Ruby**: `>= 3.4.0`
 - **Rails**: `8.1.3.1`
 - **SQLite3**: `>= 3.35.0`
-- **Node.js**: `>= 18.0.0` (para scripts de auditoría opcionales)
+- **Node.js**: `>= 18.0.0` (para scripts de auditoría y capturas opcionales)
 
 ### Pasos de Instalación
 
@@ -277,7 +296,7 @@ bin/bundler-audit check --update
 
 ---
 
-## ☁️ Despliegue en Render y Integración Continua (CI/CD)
+## ☁️ Despliegue en Render e Integración Continua (CI/CD)
 
 ### GitHub Actions (CI)
 Cada `push` o `pull_request` a las ramas `main` y `rails-migration` desencadena la ejecución automática de la suite de CI (`.github/workflows/ci.yml`):
@@ -291,10 +310,3 @@ El archivo `render.yaml` y el script `bin/render-build.sh` están optimizados pa
 - **Base de Datos**: Almacenada en `storage/production.sqlite3`.
 - **Precompilación de Assets**: Invocada durante el build mediante `bundle exec rails assets:precompile`.
 - **Preparación de BD**: Invocada automáticamente en el arranque mediante `bundle exec rails db:prepare`.
-
----
-
-## 📜 Licencia y Créditos
-
-Desarrollado para el **Colegio de San Ignacio de Loyola Vizcaínas — Jardín LAC**.
-© 2026 Jardín LAC Vizcaínas. Todos los derechos reservados.
