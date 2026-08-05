@@ -1,6 +1,6 @@
 class CatalogSearchService
   WEIGHTS = { title: 1.0, author: 1.1, authority: 0.7 }.freeze
-  THRESHOLD = 55.0
+  THRESHOLD = 50.0
 
   def self.search(query, limit: 100)
     new.search(query, limit: limit)
@@ -86,11 +86,41 @@ class CatalogSearchService
         elsif qt.start_with?(tt) && tt.length >= 3
           score = 100.0 - ((qt.length - tt.length) * 5)
           best_t_score = [ best_t_score, [ score, 60.0 ].max ].max
+        elsif qt.length >= 4 && tt.length >= 4
+          dist = levenshtein_distance(qt, tt)
+          max_len = [ qt.length, tt.length ].max.to_f
+          similarity_ratio = 1.0 - (dist.to_f / max_len)
+          if dist <= 2 || similarity_ratio >= 0.7
+            score = similarity_ratio * 100.0
+            best_t_score = [ best_t_score, score ].max
+          end
         end
       end
       best_t_score
     end
 
     token_scores.sum / token_scores.size.to_f
+  end
+
+  def levenshtein_distance(str1, str2)
+    s1 = str1.chars
+    s2 = str2.chars
+    d = Array.new(s1.size + 1) { Array.new(s2.size + 1, 0) }
+
+    (0..s1.size).each { |i| d[i][0] = i }
+    (0..s2.size).each { |j| d[0][j] = j }
+
+    (1..s1.size).each do |i|
+      (1..s2.size).each do |j|
+        cost = (s1[i - 1] == s2[j - 1]) ? 0 : 1
+        d[i][j] = [
+          d[i - 1][j] + 1,
+          d[i][j - 1] + 1,
+          d[i - 1][j - 1] + cost
+        ].min
+      end
+    end
+
+    d[s1.size][s2.size]
   end
 end
