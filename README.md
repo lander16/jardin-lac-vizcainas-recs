@@ -8,17 +8,17 @@ Un sistema integral de recomendaciones de lectura híbridas y exploración bibli
 
 | Panel de Inicio y Directorio de Lectores | Perfil del Lector y Recomendaciones Híbridas |
 | :---: | :---: |
-| ![Panel de Inicio](public/screenshots/01_home_dashboard_v3.png) | ![Perfil de Lector](public/screenshots/02_user_profile_hybrid_v3.png) |
+| ![Panel de Inicio](public/screenshots/01_home_dashboard_v4.png) | ![Perfil de Lector](public/screenshots/02_user_profile_hybrid_v4.png) |
 | *Búsqueda en tiempo real y directorio de lectores con estadísticas de préstamos.* | *Deslizadores interactivos de ponderación (Contenido, Lectores Afines, Autoridades).* |
 
 | Grafo Interactivo de Afinidad entre Lectores | Búsqueda Inteligente en Catálogo MARC21 |
 | :---: | :---: |
-| ![Grafo de Afinidad](public/screenshots/03_user_affinity_graph_v3.png) | ![Resultados de Búsqueda](public/screenshots/04b_catalog_search_results_v3.png) |
-| *Física de fuerza dirigida D3.js conectando lectores y obras afines.* | *Resultados de búsqueda interactivos por título, autor, tema o lugar.* |
+| ![Grafo de Afinidad](public/screenshots/03_user_affinity_graph_v4.png) | ![Resultados de Búsqueda](public/screenshots/04b_catalog_search_results_v4.png) |
+| *Física de fuerza dirigida D3.js conectando lectores y obras afines.* | *Resultados de búsqueda en tiempo real con catálogo desplegado y etiquetas de autoridad.* |
 
 | Detalle de Obra e Inspector de Similitud | Red de Autoridades Catalográficas (Historia de las Mujeres Filósofas) |
 | :---: | :---: |
-| ![Detalle de Obra](public/screenshots/05_book_detail_similarities_v3.png) | ![Grafo de Autoridades](public/screenshots/06_catalog_authority_graph_v3.png) |
+| ![Detalle de Obra](public/screenshots/05_book_detail_similarities_v4.png) | ![Grafo de Autoridades](public/screenshots/06_catalog_authority_graph_v4.png) |
 | *Motor de similitud en 2 niveles (Vectores TF-IDF y Autoridades compartidas).* | *Red interconectada de autoridades (autores, materias, periodos) y obras vinculadas.* |
 
 ---
