@@ -8,17 +8,17 @@ Un sistema integral de recomendaciones de lectura híbridas y exploración bibli
 
 | Panel de Inicio y Directorio de Lectores | Perfil del Lector y Recomendaciones Híbridas |
 | :---: | :---: |
-| ![Panel de Inicio](public/screenshots/01_home_dashboard.png) | ![Perfil de Lector](public/screenshots/02_user_profile_hybrid.png) |
+| ![Panel de Inicio](https://raw.githubusercontent.com/lander16/jardin-lac-vizcainas-recs/main/public/screenshots/01_home_dashboard.png?v=2) | ![Perfil de Lector](https://raw.githubusercontent.com/lander16/jardin-lac-vizcainas-recs/main/public/screenshots/02_user_profile_hybrid.png?v=2) |
 | *Búsqueda en tiempo real y directorio de lectores con estadísticas de préstamos.* | *Deslizadores interactivos de ponderación (Contenido, Lectores Afines, Autoridades).* |
 
 | Grafo Interactivo de Afinidad entre Lectores | Explorador del Catálogo e Inspector MARC21 |
 | :---: | :---: |
-| ![Grafo de Afinidad](public/screenshots/03_user_affinity_graph.png) | ![Explorador del Catálogo](public/screenshots/04_catalog_explorer.png) |
+| ![Grafo de Afinidad](https://raw.githubusercontent.com/lander16/jardin-lac-vizcainas-recs/main/public/screenshots/03_user_affinity_graph.png?v=2) | ![Explorador del Catálogo](https://raw.githubusercontent.com/lander16/jardin-lac-vizcainas-recs/main/public/screenshots/04_catalog_explorer.png?v=2) |
 | *Física de fuerza dirigida D3.js conectando lectores y obras afines.* | *Búsqueda rápida en acervo con desglose por autoridades catalográficas.* |
 
 | Detalle de Obra y Similitud Híbrida | Red de Autoridades Catalográficas de la Obra |
 | :---: | :---: |
-| ![Detalle de Obra](public/screenshots/05_book_detail_similarities.png) | ![Grafo de Autoridades](public/screenshots/06_catalog_authority_graph.png) |
+| ![Detalle de Obra](https://raw.githubusercontent.com/lander16/jardin-lac-vizcainas-recs/main/public/screenshots/05_book_detail_similarities.png?v=2) | ![Grafo de Autoridades](https://raw.githubusercontent.com/lander16/jardin-lac-vizcainas-recs/main/public/screenshots/06_catalog_authority_graph.png?v=2) |
 | *Motor de similitud en 2 niveles (Vectores TF-IDF y Autoridades compartidas).* | *Visualización en red de autores, materias, lugares y obras vinculadas.* |
 
 ---
