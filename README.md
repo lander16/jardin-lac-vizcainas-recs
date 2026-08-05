@@ -1,6 +1,6 @@
 # 📖 Jardín LAC Vizcaínas — Sistema de Recomendaciones y Catálogo Inteligente
 
-Un sistema integral de recomendaciones de lectura híbridas y exploración bibliográfica en red desarrollado para la biblioteca y archivo del **Colegio de San Ignacio de Loyola Vizcaínas**. El sistema combina análisis de datos avanzado en Python (procesamiento de registros catalográficos MARC21 de Koha ILS, incrustaciones vectoriales TF-IDF, filtrado colaborativo con distancia de Jaccard y grafos de autoridades) con una plataforma web en **Ruby on Rails 8** orientada a la experiencia de usuario (Hotwire Turbo, Stimulus JS y visualizaciones interactivas D3.js).
+Un sistema integral de recomendaciones de lectura híbridas y exploración bibliográfica en red desarrollado para la biblioteca  **Jardín LAC**. El sistema combina análisis de datos avanzado en Python (procesamiento de registros catalográficos MARC21 de Koha ILS, incrustaciones vectoriales TF-IDF, filtrado colaborativo con distancia de Jaccard y grafos de autoridades) con una plataforma web en **Ruby on Rails 8** orientada a la experiencia de usuario (Hotwire Turbo, Stimulus JS y visualizaciones interactivas D3.js).
 
 ---
 
@@ -24,6 +24,7 @@ Un sistema integral de recomendaciones de lectura híbridas y exploración bibli
 ---
 
 ## 📋 Tabla de Contenidos
+
 - [🏛 Contexto y Objetivos](#-contexto-y-objetivos)
 - [🏗 Arquitectura General del Sistema](#-arquitectura-general-del-sistema)
 - [🐍 Pipeline de Análisis de Datos (Python)](#-pipeline-de-análisis-de-datos-python)
@@ -86,6 +87,7 @@ El proyecto está diseñado bajo una arquitectura limpia en dos capas acopladas 
 Toda la lógica de procesamiento masivo de datos se ejecuta en Python (`pipeline/`), generando los datasets precalculados consumidos por la aplicación web.
 
 ### 1. Extracción del Catálogo Koha ILS
+
 - **Script**: `pipeline/fetch_koha_catalog.py`
 - Extrae registros bibliográficos del sistema Koha ILS en formato MARC21.
 - Estructura campos clave:
@@ -93,10 +95,12 @@ Toda la lógica de procesamiento masivo de datos se ejecuta en Python (`pipeline
   - `600 / 610 / 650 / 651 / 655`: Descriptores temáticos, corporativos, geográficos y de forma/género.
 
 ### 2. Enriquecimiento con Datos de Goodreads
+
 - **Script**: `pipeline/match_koha_goodreads.py`
 - Mapea obras del catálogo local con registros de Goodreads para enriquecer descripciones, portadas y métricas globales de popularidad.
 
 ### 3. Matriz de Similitud Vectorial de Contenido (TF-IDF + Coseno)
+
 - **Script**: `pipeline/embed_books.py`
 - Construye vectores de caracterización para cada obra procesando títulos, sinopsis y descriptores catalográficos mediante **TF-IDF (Term Frequency - Inverse Document Frequency)**.
 - Calcula la **Similitud Coseno** entre todos los pares de libros:
@@ -104,6 +108,7 @@ Toda la lógica de procesamiento masivo de datos se ejecuta en Python (`pipeline
 - Produce **24,500 pares de similitud temática** almacenados en `data/content_similarities.json`.
 
 ### 4. Filtrado Colaborativo de Lectores (Índice de Jaccard)
+
 - **Scripts**: `pipeline/select_koha_users.py`, `pipeline/generate_recommendations.py`
 - Procesa el historial de préstamos (`data/koha_checkouts.csv`) de 300 lectores representativos (13,746 préstamos).
 - Calcula la **Similitud de Jaccard** entre el conjunto de lecturas de dos usuarios $U_1$ y $U_2$:
@@ -111,6 +116,7 @@ Toda la lógica de procesamiento masivo de datos se ejecuta en Python (`pipeline
 - Produce **9,000 pares de afinidad de lectores** en `data/collab_recommendations.json` y `data/user_graph.json`.
 
 ### 5. Red y Grafo de Autoridades Catalográficas (MARC21)
+
 - **Script**: `pipeline/build_authority_graph.py`
 - Modela las relaciones entre libros basándose en autoridades compartidas (mismo autor, temática, periodo histórico o lugar de publicación).
 - Genera **23,295 autoridades catalográficas** y **61,128 conexiones inter-libro** en `data/koha/authority_graph.json`.
@@ -122,6 +128,7 @@ Toda la lógica de procesamiento masivo de datos se ejecuta en Python (`pipeline
 La aplicación web en Rails 8 provee una interfaz ágil, reactiva y responsive para explotar el motor de recomendaciones y explorar el acervo.
 
 ### Stack Tecnológico
+
 - **Framework**: Ruby on Rails `8.1.3.1` (Ruby `3.4.1`)
 - **Base de Datos**: SQLite 3 (`storage/production.sqlite3` en producción)
 - **Frontend Reactive**: Hotwire (Turbo Frames & Turbo Streams + Stimulus JS v3)
@@ -169,6 +176,7 @@ El servicio `RecommendationService` calcula recomendaciones personalizadas en ti
 $$S_{\text{final}}(B) = w_{\text{content}} \cdot \hat{S}_{\text{content}}(B) + w_{\text{collab}} \cdot \hat{S}_{\text{collab}}(B) + w_{\text{auth}} \cdot \hat{S}_{\text{auth}}(B)$$
 
 Donde:
+
 - $\hat{S}_{\text{content}}(B)$: Similitud acumulada de contenido (TF-IDF) entre la obra $B$ y las obras leídas por el usuario.
 - $\hat{S}_{\text{collab}}(B)$: Puntuación colaborativa obtenida de los hábitos de lectores afines (distancia Jaccard).
 - $\hat{S}_{\text{auth}}(B)$: Similitud estructural por autoridades compartidas (autores y materias comunes).
@@ -179,6 +187,7 @@ Donde:
 ### Motor de Similitud de 2 Niveles para Obras (`BooksController`)
 
 Al visualizar el detalle de un libro (`/books/:id`), el controlador implementa un motor de similitud en 2 niveles:
+
 1. **Nivel Primario**: Recupera las obras con mayor similitud vectorial TF-IDF desde `ContentSimilarity`.
 2. **Nivel Secundario (Fallback)**: Para obras sin vectores precalculados, ejecuta una consulta relacional optimizada que agrupa libros por el número máximo de autoridades catalográficas compartidas (`BookAuthority`), garantizando que **todas las obras del catálogo presenten sugerencias afines**.
 
@@ -221,6 +230,7 @@ bin/rails import:all
 ```
 
 Esta tarea ejecuta secuencialmente:
+
 1. `import:books`: Carga 7,840 obras bibliográficas desde `data/book_metadata.json`.
 2. `import:patrons`: Carga 300 lectores desde `data/patron_names.json`.
 3. `import:checkouts`: Registra 13,746 préstamos históricos desde `data/koha_checkouts.csv`.
@@ -234,6 +244,7 @@ Esta tarea ejecuta secuencialmente:
 ## 🚀 Guía de Instalación y Desarrollo Local
 
 ### Requisitos Previos
+
 - **Ruby**: `>= 3.4.0`
 - **Rails**: `8.1.3.1`
 - **SQLite3**: `>= 3.35.0`
@@ -242,30 +253,36 @@ Esta tarea ejecuta secuencialmente:
 ### Pasos de Instalación
 
 1. **Clonar el repositorio y acceder al directorio**:
+
    ```bash
    git clone git@github.com:lander16/jardin-lac-vizcainas-recs.git
    cd jardin-lac-vizcainas-recs
    ```
 
 2. **Instalar gemas de Ruby**:
+
    ```bash
    bundle install
    ```
 
 3. **Crear e inicializar la base de datos**:
+
    ```bash
    bin/rails db:prepare
    ```
 
 4. **Poblar la base de datos con el dataset completo**:
+
    ```bash
    bin/rails import:all
    ```
 
 5. **Iniciar el servidor de desarrollo**:
+
    ```bash
    bin/rails server
    ```
+
    Navega en tu navegador a `http://localhost:3000`.
 
 ---
@@ -275,21 +292,25 @@ Esta tarea ejecuta secuencialmente:
 El proyecto cuenta con un suite completo de pruebas unitarias e integración, así como herramientas estáticas de análisis de código:
 
 ### Ejecutar Suite de Pruebas
+
 ```bash
 bundle exec rails test
 ```
 
 ### Análisis Estático de Código (RuboCop)
+
 ```bash
 bin/rubocop
 ```
 
 ### Auditoría de Seguridad de Vulnerabilidades en Rails (Brakeman)
+
 ```bash
 bin/brakeman --no-pager
 ```
 
 ### Auditoría de Vulnerabilidades en Gemas (Bundler Audit)
+
 ```bash
 bin/bundler-audit check --update
 ```
@@ -299,14 +320,18 @@ bin/bundler-audit check --update
 ## ☁️ Despliegue en Render e Integración Continua (CI/CD)
 
 ### GitHub Actions (CI)
+
 Cada `push` o `pull_request` a las ramas `main` y `rails-migration` desencadena la ejecución automática de la suite de CI (`.github/workflows/ci.yml`):
+
 - Verificación de formato y linters (`RuboCop`).
 - Auditoría de seguridad de código (`Brakeman`).
 - Escaneo de vulnerabilidades en dependencias (`bundler-audit`).
 - Ejecución de pruebas automatizadas (`rails test`).
 
 ### Despliegue en Render (Tier Gratuito)
+
 El archivo `render.yaml` y el script `bin/render-build.sh` están optimizados para el plan gratuito de Render:
+
 - **Base de Datos**: Almacenada en `storage/production.sqlite3`.
 - **Precompilación de Assets**: Invocada durante el build mediante `bundle exec rails assets:precompile`.
 - **Preparación de BD**: Invocada automáticamente en el arranque mediante `bundle exec rails db:prepare`.
