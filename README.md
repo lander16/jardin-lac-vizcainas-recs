@@ -49,7 +49,7 @@ Un sistema integral de recomendaciones de lectura híbridas y exploración bibli
 
 ## 🏛 Contexto y Objetivos
 
-El **Jardín LAC Vizcaínas** resguarda una vasta colección bibliográfica e histórica. Para enriquecer la experiencia de los lectores e investigadores y facilitar la navegación por su acervo, este proyecto resuelve dos necesidades centrales:
+Para enriquecer la experiencia de los lectores e investigadores y facilitar la navegación por su acervo, este proyecto resuelve dos necesidades centrales:
 
 1. **Recomendaciones Personalizadas de Lectura**: Superar las búsquedas por palabra clave tradicional mediante un algoritmo híbrido que combina la **temática de los libros**, la **afinidad entre hábitos de lectura de distintos usuarios** y los **descriptores de autoridad catalográfica** (autores, materias, lugares, periodos).
 2. **Visualización Exploratoria de Redes**: Permitir a usuarios y bibliotecarios navegar visualmente por las interconexiones entre obras, autores y descriptores a través de grafos interactivos.
