@@ -23,17 +23,4 @@ class UsersControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "turbo-frame[id='recommendations-list']"
   end
-
-  test "should search books for checkout in modal" do
-    get user_checkout_search_url(@patron.id), params: { q: "Cien" }
-    assert_response :success
-    assert_select "turbo-frame[id='checkout-search-results']"
-  end
-
-  test "should perform checkout" do
-    new_book = Book.create!(id: "b_test_2", title: "El Amor en los Tiempos del Cólera", author: "García Márquez")
-    post user_checkout_url(@patron.id), params: { book_id: new_book.id }
-    assert_redirected_to user_path(@patron.id)
-    assert Checkout.exists?(patron: @patron, book: new_book)
-  end
 end

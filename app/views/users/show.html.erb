@@ -78,15 +78,10 @@
     </div>
 
     <!-- Active Checkout History -->
-    <div class="glass-card" data-controller="modal">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-        <div class="section-title" style="margin-bottom:0;">
-          <i class="fa-solid fa-clock-rotate-left" style="color:var(--color-collab)"></i>
-          <h2>Historial de Lectura</h2>
-        </div>
-        <button class="btn btn-primary" style="padding:0.35rem 0.75rem; font-size:0.8rem;" data-action="click->modal#open" aria-label="Registrar nuevo préstamo simulado">
-          <i class="fa-solid fa-plus"></i> Registrar Préstamo
-        </button>
+    <div class="glass-card">
+      <div class="section-title" style="margin-bottom:1rem;">
+        <i class="fa-solid fa-clock-rotate-left" style="color:var(--color-collab)"></i>
+        <h2>Historial de Lectura</h2>
       </div>
 
       <div style="display:flex; flex-direction:column; gap:0.5rem; max-height:400px; overflow-y:auto; padding-right:0.25rem;">
@@ -110,30 +105,6 @@
           <% end %>
         <% end %>
       </div>
-
-      <!-- Checkout Modal -->
-      <dialog id="checkout-modal" class="modal-overlay" data-modal-target="dialog">
-        <div class="modal-card" style="max-width:500px; width:90%; background:white; padding:1.5rem; border-radius:8px; box-shadow:0 10px 40px rgba(0,0,0,0.2); position:relative;">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; border-bottom:1px solid var(--border-light); padding-bottom:0.75rem;">
-            <h3 style="font-family:var(--font-display); font-size:1.25rem; font-weight:700; margin:0; color:var(--text-primary);">Registrar Préstamo Simulado</h3>
-            <button style="background:none; border:none; font-size:1.5rem; cursor:pointer; color:var(--text-secondary);" data-action="click->modal#close" aria-label="Cerrar modal">&times;</button>
-          </div>
-          
-          <div data-controller="search" data-search-url-value="<%= user_checkout_search_path(@patron.id) %>">
-            <div class="search-container" style="margin-bottom:1rem;">
-              <i class="fa-solid fa-magnifying-glass search-icon"></i>
-              <label for="checkout-book-search-input" class="sr-only">Buscar libro en el catálogo por título o autor</label>
-              <input type="text" id="checkout-book-search-input" class="search-input" placeholder="Buscar libro en el catálogo por título o autor..." data-action="input->search#input">
-            </div>
-
-            <%= turbo_frame_tag "checkout-search-results" do %>
-              <div style="text-align:center; padding:2rem; color:var(--text-muted); font-size:0.85rem;">
-                Ingresa al menos 2 letras para buscar obras disponibles.
-              </div>
-            <% end %>
-          </div>
-        </div>
-      </dialog>
     </div>
   </div>
 

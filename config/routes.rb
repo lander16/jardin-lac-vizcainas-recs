@@ -3,14 +3,11 @@ Rails.application.routes.draw do
 
   # Dashboard actions
   get "users_search", to: "dashboard#users_search"
-  post "reset", to: "dashboard#reset", as: :reset_checkouts
 
   # Reader pages & frames
   get "users/:id", to: "users#show", as: :user
   get "users/:id/graph", to: "users#graph", as: :user_graph
   get "users/:id/recommendations_frame", to: "users#recommendations_frame", as: :user_recommendations_frame
-  get "users/:id/checkout_search", to: "users#checkout_search", as: :user_checkout_search
-  post "users/:id/checkout", to: "users#checkout", as: :user_checkout
 
   # Book details
   get "books/:id", to: "books#show", as: :book

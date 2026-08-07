@@ -4,20 +4,20 @@ export default class extends Controller {
   static targets = ["dialog", "inspectorDialog"]
 
   open() {
-    const dialog = this.hasDialogTarget ? this.dialogTarget : document.getElementById("checkout-modal")
-    if (dialog && typeof dialog.showModal === "function") {
-      dialog.showModal()
-    } else if (dialog) {
-      dialog.setAttribute("open", "")
+    if (!this.hasDialogTarget) return
+    if (typeof this.dialogTarget.showModal === "function") {
+      this.dialogTarget.showModal()
+    } else {
+      this.dialogTarget.setAttribute("open", "")
     }
   }
 
   close() {
-    const dialog = this.hasDialogTarget ? this.dialogTarget : document.getElementById("checkout-modal")
-    if (dialog && typeof dialog.close === "function") {
-      dialog.close()
-    } else if (dialog) {
-      dialog.removeAttribute("open")
+    if (!this.hasDialogTarget) return
+    if (typeof this.dialogTarget.close === "function") {
+      this.dialogTarget.close()
+    } else {
+      this.dialogTarget.removeAttribute("open")
     }
   }
 

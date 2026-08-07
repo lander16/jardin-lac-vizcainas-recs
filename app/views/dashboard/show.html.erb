@@ -96,16 +96,5 @@
         <% end %>
       </div>
     </div>
-    
-    <div class="glass-card" data-controller="reset">
-      <div class="section-title">
-        <i class="fa-solid fa-wrench" style="color:var(--color-hybrid)"></i>
-        <h2>Controles del POC</h2>
-      </div>
-      <p style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:1rem;">Permite restablecer las lecturas de los usuarios al estado original para realizar nuevas pruebas.</p>
-      <%= button_to reset_checkouts_path, method: :post, class: "btn btn-secondary", style: "width:100%; justify-content:center; border-color:rgba(124, 25, 51, 0.2); color:var(--color-accent);", data: { action: "click->reset#confirm" } do %>
-        <i class="fa-solid fa-rotate-left"></i> Restablecer Préstamos
-      <% end %>
-    </div>
   </div>
 </div>

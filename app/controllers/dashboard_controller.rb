@@ -25,13 +25,4 @@ class DashboardController < ApplicationController
 
     render partial: "dashboard/users_table", locals: { users: @users }
   end
-
-  def reset
-    Checkout.where(simulated: true).destroy_all
-    Patron.find_each do |patron|
-      patron.update_columns(checkouts_count: patron.checkouts.size)
-    end
-
-    redirect_to root_path, notice: "¡Préstamos restablecidos con éxito!"
-  end
 end
