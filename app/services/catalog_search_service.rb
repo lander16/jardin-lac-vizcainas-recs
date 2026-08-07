@@ -44,17 +44,36 @@ class CatalogSearchService
   private
 
   def candidate_books(query_tokens)
-    # SQL pre-filter: any token matches title or author. Authority
-    # names are scored in Ruby on the shortlist (the cross-table JOIN
-    # is expensive and rarely contributes more candidates than the
-    # title/author LIKE).
+    # SQL pre-filter with two tiers per query token so typos at the
+    # SQL level still produce candidates for the Ruby Levenshtein
+    # scorer to rank:
+    #   1. Exact substring — e.g. '%pedro%' matches "Pedro".
+    #   2. First-5-chars prefix (when the token is at least 5 chars)
+    #      — e.g. '%shake%' matches "Shakespeare" even when the
+    #      query is "shakesrpeare" (transposition). Without this
+    #      tier a typo'd query produces zero candidates and the
+    #      Levenshtein never runs.
+    # Authority names are scored in Ruby on the shortlist (the cross-
+    # table JOIN is expensive and rarely contributes more candidates
+    # than the title/author LIKE).
     scope = Book.includes(:authorities)
-    conditions = query_tokens.map do |tok|
-      "(LOWER(books.title) LIKE ? OR LOWER(books.author) LIKE ?)"
-    end
-    bindings = query_tokens.flat_map do |tok|
-      like = "%#{ActiveRecord::Base.sanitize_sql_like(tok)}%"
-      [ like, like ]
+    conditions = []
+    bindings = []
+    query_tokens.each do |tok|
+      # Tier 1: exact substring.
+      full_like = "%#{ActiveRecord::Base.sanitize_sql_like(tok)}%"
+      conditions << "(LOWER(books.title) LIKE ? OR LOWER(books.author) LIKE ?)"
+      bindings << full_like
+      bindings << full_like
+
+      # Tier 2: prefix fallback for typo tolerance.
+      if tok.length >= 5
+        prefix = tok[0, 5]
+        prefix_like = "%#{ActiveRecord::Base.sanitize_sql_like(prefix)}%"
+        conditions << "(LOWER(books.title) LIKE ? OR LOWER(books.author) LIKE ?)"
+        bindings << prefix_like
+        bindings << prefix_like
+      end
     end
     scope.where(conditions.join(" OR "), *bindings).distinct.limit(CANDIDATE_LIMIT)
   end

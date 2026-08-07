@@ -81,4 +81,24 @@ class CatalogSearchServiceTest < ActiveSupport::TestCase
       assert_nil demian[:semantic_score]
     end
   end
+
+  test "SQL pre-filter is typo-tolerant at the first-N-chars level" do
+    # The user-reported regression: searching for "shakesrpeare"
+    # (transposition in the middle) used to return 0 results because
+    # the SQL pre-filter only matched the literal substring. The fix
+    # is to also match the first 5 chars of each query token, so the
+    # candidate set still contains the Shakespeare books and the
+    # Ruby Levenshtein can rank them.
+    with_stubbed_class_method(QueryEmbedder, :default, fake_embedder(available: false)) do
+      Book.create!(id: "shake_1", title: "Hamlet", author: "Shakespeare, William")
+
+      results = CatalogSearchService.search("shakesrpeare", limit: 10)
+      ids = results.map { |r| r[:biblio_id] }
+
+      assert_includes ids, "shake_1",
+                      "Shakespeare should appear via the prefix fallback " \
+                      "even though the literal substring 'shakesrpeare' " \
+                      "isn't in the book metadata"
+    end
+  end
 end
