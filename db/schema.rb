@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_23_180008) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_07_193747) do
   create_table "authorities", id: :string, force: :cascade do |t|
     t.string "authority_type", null: false
     t.integer "books_count", default: 0, null: false
@@ -61,7 +61,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_23_180008) do
     t.boolean "simulated", default: false, null: false
     t.datetime "updated_at", null: false
     t.index ["book_id"], name: "index_checkouts_on_book_id"
-    t.index ["patron_id", "book_id"], name: "index_checkouts_on_patron_id_and_book_id"
+    t.index ["patron_id", "book_id"], name: "index_checkouts_on_patron_id_and_book_id", unique: true
     t.index ["patron_id"], name: "index_checkouts_on_patron_id"
   end
 

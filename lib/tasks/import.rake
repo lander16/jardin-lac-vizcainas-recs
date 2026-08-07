@@ -40,7 +40,7 @@ namespace :import do
       }
     end
 
-    Patron.insert_all(records) unless records.empty?
+    records.each_slice(1000) { |slice| Patron.insert_all(slice, unique_by: :id) } unless records.empty?
     puts "  -> #{Patron.count} patrons imported."
   end
 
@@ -93,7 +93,7 @@ namespace :import do
     puts "Importing books..."
     records = books_map.values
     records.each_slice(1000) do |slice|
-      Book.insert_all(slice)
+      Book.insert_all(slice, unique_by: :id)
     end
     puts "  -> #{Book.count} books imported."
   end
@@ -119,13 +119,17 @@ namespace :import do
     end
 
     records.each_slice(1000) do |slice|
-      Checkout.insert_all(slice)
+      Checkout.insert_all(slice, unique_by: [:patron_id, :book_id])
     end
 
-    # Update counter cache for patrons
-    Patron.find_each do |patron|
-      patron.update_columns(checkouts_count: patron.checkouts.count)
-    end
+    # Single SQL statement to update counter cache for all patrons at once
+    # (replaces the previous N x SELECT COUNT(*) per patron).
+    ActiveRecord::Base.connection.execute(<<~SQL)
+      UPDATE patrons
+      SET checkouts_count = (
+        SELECT COUNT(*) FROM checkouts WHERE checkouts.patron_id = patrons.id
+      )
+    SQL
 
     puts "  -> #{Checkout.count} checkouts imported."
   end
@@ -139,6 +143,9 @@ namespace :import do
     koha_books = JSON.parse(File.read(file_path))
     now = Time.current
 
+    # Load valid book IDs once instead of one Book.exists? query per Koha record.
+    valid_book_ids = Set.new(Book.pluck(:id))
+
     auth_map = {}
     book_auth_records = []
 
@@ -149,7 +156,7 @@ namespace :import do
 
     koha_books.each do |b|
       bib_id = b["biblio_id"].to_s
-      next unless Book.exists?(id: bib_id)
+      next unless valid_book_ids.include?(bib_id)
 
       (b["authorities"] || []).each do |auth|
         auth_id = auth["authority_id"].to_s
@@ -177,19 +184,22 @@ namespace :import do
 
     auth_records = auth_map.values
     auth_records.each_slice(1000) do |slice|
-      Authority.insert_all(slice)
+      Authority.insert_all(slice, unique_by: :id)
     end
 
     # Deduplicate book_authorities by [book_id, authority_id]
     unique_ba = book_auth_records.uniq { |r| [ r[:book_id], r[:authority_id] ] }
     unique_ba.each_slice(1000) do |slice|
-      BookAuthority.insert_all(slice)
+      BookAuthority.insert_all(slice, unique_by: [:book_id, :authority_id])
     end
 
-    # Update counter cache for authorities
-    Authority.find_each do |auth|
-      auth.update_columns(books_count: auth.book_authorities.count)
-    end
+    # Single SQL statement to update counter cache for all authorities at once
+    ActiveRecord::Base.connection.execute(<<~SQL)
+      UPDATE authorities
+      SET books_count = (
+        SELECT COUNT(*) FROM book_authorities WHERE book_authorities.authority_id = authorities.id
+      )
+    SQL
 
     puts "  -> #{Authority.count} authorities and #{BookAuthority.count} book_authorities imported."
   end
@@ -226,7 +236,7 @@ namespace :import do
     records.uniq! { |r| [ r[:source_book_id], r[:target_book_id] ] }
 
     records.each_slice(1000) do |slice|
-      BookConnection.insert_all(slice)
+      BookConnection.insert_all(slice, unique_by: [:source_book_id, :target_book_id])
     end
 
     puts "  -> #{BookConnection.count} book connections imported."
@@ -267,7 +277,7 @@ namespace :import do
     records.uniq! { |r| [ r[:book_id], r[:similar_book_id] ] }
 
     records.each_slice(1000) do |slice|
-      ContentSimilarity.insert_all(slice)
+      ContentSimilarity.insert_all(slice, unique_by: [:book_id, :similar_book_id])
     end
 
     puts "  -> #{ContentSimilarity.count} content similarities imported."
@@ -308,7 +318,7 @@ namespace :import do
     records.uniq! { |r| [ r[:patron_id], r[:similar_patron_id] ] }
 
     records.each_slice(1000) do |slice|
-      UserSimilarity.insert_all(slice)
+      UserSimilarity.insert_all(slice, unique_by: [:patron_id, :similar_patron_id])
     end
 
     puts "  -> #{UserSimilarity.count} user similarities imported."
