@@ -79,12 +79,20 @@
     <div class="search-container" data-controller="search" data-search-url-value="<%= catalog_search_path %>">
       <i class="fa-solid fa-magnifying-glass search-icon"></i>
       <label for="catalog-search-input" class="sr-only">Buscar por título, autor, tema o lugar</label>
-      <input type="text" 
+      <input type="text"
              id="catalog-search-input"
-             class="search-input" 
+             class="search-input"
              placeholder="Buscar por título, autor, tema o lugar (ej. 'Hess', 'México', 'Revolución')..."
              data-action="input->search#input">
     </div>
+
+    <% if QueryEmbedder.default.available? %>
+      <div class="semantic-pill"
+           title="Las búsquedas combinan coincidencia literal (título, autor, autoridad) con similitud semántica via embeddings (sentence-transformers)."
+           style="display:inline-flex; align-items:center; gap:0.35rem; margin-top:0.6rem; padding:0.25rem 0.6rem; background:rgba(125, 79, 155, 0.08); border:1px solid rgba(125, 79, 155, 0.25); border-radius:12px; font-size:0.72rem; color:var(--color-authority); font-weight:600;">
+        <i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i> Búsqueda semántica activa
+      </div>
+    <% end %>
 
     <%= turbo_frame_tag "catalog-results" do %>
       <%= render "catalog/search_results", books: @books, query: nil %>

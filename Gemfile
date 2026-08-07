@@ -38,6 +38,12 @@ gem "thruster", require: false
 # Use Active Storage variants [https://guides.rubyonrails.org/active_storage_overview.html#transforming-images]
 gem "image_processing", "~> 1.2"
 
+# In-app semantic search (reads the ONNX model produced by
+# pipeline/export_onnx.py and tokenises queries the same way the
+# offline pipeline does, so the two halves are wire-compatible).
+gem "onnxruntime", "~> 0.11.5"
+gem "tokenizers",  "~> 0.7.0"
+
 group :development, :test do
   # See https://guides.rubyonrails.org/debugging_rails_applications.html#debugging-with-the-debug-gem
   gem "debug", platforms: %i[ mri windows ], require: "debug/prelude"

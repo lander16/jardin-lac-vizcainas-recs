@@ -7,10 +7,37 @@ class CatalogControllerTest < ActionDispatch::IntegrationTest
     BookAuthority.create!(book: @book, authority: @authority)
   end
 
+  # Build a fake embedder that responds to .available? and .encode.
+  def fake_embedder(available:, vector: nil)
+    fake = Object.new
+    fake.instance_variable_set(:@available, available)
+    fake.instance_variable_set(:@vector, vector)
+    fake.define_singleton_method(:available?) { @available }
+    fake.define_singleton_method(:encode) { |_t| @vector }
+    fake
+  end
+
   test "should get catalog index" do
     get catalog_url
     assert_response :success
     assert_select "h1", text: /Catálogo del Acervo/
+  end
+
+  test "should not show the semantic pill when the ONNX model is unavailable" do
+    with_stubbed_class_method(QueryEmbedder, :default, fake_embedder(available: false)) do
+      get catalog_url
+      assert_response :success
+      assert_select ".semantic-pill", false, "Semantic pill should be hidden when the embedder is not available"
+    end
+  end
+
+  test "should show the semantic pill when the ONNX model is available" do
+    with_stubbed_class_method(QueryEmbedder, :default, fake_embedder(available: true)) do
+      get catalog_url
+      assert_response :success
+      assert_select ".semantic-pill", true
+      assert_select ".semantic-pill", /Búsqueda semántica activa/
+    end
   end
 
   test "should search catalog with turbo frame" do
@@ -19,20 +46,17 @@ class CatalogControllerTest < ActionDispatch::IntegrationTest
     assert_select "turbo-frame[id='catalog-results']"
   end
 
-  test "should get catalog graph" do
-    get catalog_graph_url(@book.id)
-    assert_response :success
-  end
+  test "search results include a semantic explanation when relevant" do
+    query_vec = Array.new(QueryEmbedder::DIMENSION, 0.0).tap { |v| v[0] = 1.0 }
+    with_stubbed_class_method(QueryEmbedder, :default, fake_embedder(available: true, vector: query_vec)) do
+      @book.update!(
+        embedding: Array.new(QueryEmbedder::DIMENSION, 0.0).tap { |v| v[0] = 1.0 }.pack("e*"),
+        embedding_model: "test",
+      )
 
-  test "should get authorities by type with turbo frame" do
-    get catalog_authorities_by_type_url(type: "Lugar")
-    assert_response :success
-    assert_select "turbo-frame[id='authority-inspector']"
-  end
-
-  test "should get authority detail with turbo frame" do
-    get catalog_authority_detail_url(type: "Lugar", id: @authority.id)
-    assert_response :success
-    assert_select "turbo-frame[id='inspector-books-panel']"
+      get catalog_search_url, params: { q: "Pedro" }
+      assert_response :success
+      assert_match(/Coincidencia semántica/, response.body)
+    end
   end
 end

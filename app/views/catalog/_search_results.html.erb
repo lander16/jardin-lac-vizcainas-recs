@@ -4,7 +4,13 @@
       <div style="text-align:center; padding:3rem; color:var(--text-secondary);">
         <i class="fa-solid fa-building-columns" style="font-size:2.5rem; color:var(--text-muted); opacity:0.4; margin-bottom:0.75rem;"></i>
         <p style="font-size:1rem; font-weight:600;">No se encontraron resultados en el catálogo.</p>
-        <p style="font-size:0.85rem; color:var(--text-muted);">Intenta ajustar el término de búsqueda.</p>
+        <% if QueryEmbedder.default.available? %>
+          <p style="font-size:0.85rem; color:var(--text-muted); margin-top:0.5rem;">
+            La búsqueda semántica ya intenta encontrar obras relacionadas por tema. Prueba reformulando con sinónimos (p. ej. "filosofía", "novela", "historia") o un autor conocido.
+          </p>
+        <% else %>
+          <p style="font-size:0.85rem; color:var(--text-muted);">Intenta ajustar el término de búsqueda.</p>
+        <% end %>
       </div>
     <% else %>
       <% books.each do |b| %>

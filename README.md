@@ -238,6 +238,64 @@ Esta tarea ejecuta secuencialmente:
 5. `import:connections`: Carga 61,128 conexiones inter-libro por autoridades.
 6. `import:content_similarities`: Carga 24,500 pares de similitud temática.
 7. `import:user_similarities`: Carga 9,000 pares de similitud entre lectores.
+8. `import:embeddings`: Carga los **7,840 vectores semánticos de 384 dimensiones** (uno por libro) generados por la pipeline de embeddings, persistidos como `BLOB` en `books.embedding`.
+
+---
+
+## 🧠 Búsqueda Semántica en Tiempo Real
+
+Además de la búsqueda por coincidencia literal (token + Levenshtein), el catálogo soporta **búsqueda semántica** que permite consultas por tema aunque el término exacto no aparezca en el título, autor o autoridad. Por ejemplo, una consulta como *"soledad existencial"* devuelve *Steppenwolf* (Hermann Hesse) porque su descripción conecta temáticamente con la búsqueda, aunque la palabra "soledad" no aparezca en el libro.
+
+### Arquitectura
+
+```
+  pipeline/embed_books.py                ONNX Runtime (C++)
+       │                                      ▲
+       │ genera                                │
+       ▼                                      │  infiere
+  data/embeddings.bin  ──► import:embeddings ──► books.embedding (BLOB)
+  data/embeddings_index.json                                            │
+                                                                       │ QueryEmbedder
+  data/mini_lm_onnx/  ────────────────────────────────────► (onnxruntime) ◄┘
+       ▲                                                   ▲
+       │                                                   │
+  pipeline/export_onnx.py                          Rails request
+  (one-time, offline)                              (CatalogController#search)
+```
+
+- **Pipeline offline (Python + sentence-transformers)**: `pipeline/embed_books.py` produce el vector semántico (384 dims, L2-normalizado) para cada libro del catálogo Koha. Se ejecuta en una laptop o CI — **nunca en Render**.
+- **Export one-time a ONNX**: `pipeline/export_onnx.py` convierte los pesos PyTorch a un artefacto ONNX int8-quantized en `data/mini_lm_onnx/` (~22 MB). Este directorio se commitea al repo y **nunca se vuelve a regenerar** salvo que cambie la versión del modelo.
+- **Inferencia en runtime (Ruby + ONNX)**: la gema `onnxruntime` carga el modelo ONNX y la gema `tokenizers` produce los mismos tokens que el pipeline Python. `app/services/query_embedder.rb` codifica el query del usuario en el mismo espacio vectorial.
+- **Almacenamiento**: cada libro guarda su vector como `BLOB` de 1.5 KB en `books.embedding`. Para 7,840 obras son ~12 MB — pequeño suficiente para cargar toda la columna en memoria durante la búsqueda.
+
+### Híbrido token + semántico
+
+`CatalogSearchService` ahora combina ambas señales con un peso configurable:
+
+```
+final_score = (1 - w_semantic) · token_score + w_semantic · semantic_score
+```
+
+donde `w_semantic = 0.35` por default (ligero sesgo hacia la coincidencia literal para que las erratas tipográficas sigan ganando). Los libros sin embedding se evalúan sólo con el score token, preservando el comportamiento legacy.
+
+### Despliegue en Render (Free Tier)
+
+- **Sin Python en runtime**: el modelo ONNX corre en C++ dentro de la gema `onnxruntime`, no se necesita buildpack de Python.
+- **Memoria**: ~80 MB de footprint para el modelo + runtime. Cabe holgadamente en los 512 MB del tier gratuito.
+- **Latencia**: ~300 ms en la primera búsqueda (carga del modelo), 20–40 ms por query subsecuente.
+- **`bin/render-build.sh`** pre-calienta el modelo durante el deploy para que la primera búsqueda del usuario no pague el costo de carga.
+
+### Regenerar el modelo
+
+Si en el futuro cambias la versión de `all-MiniLM-L6-v2`, ejecuta en tu laptop:
+
+```bash
+pip install 'optimum[onnxruntime]' onnx
+SENTENCE_TRANSFORMER_REVISION=<nuevo-sha> python3 pipeline/export_onnx.py
+git add data/mini_lm_onnx/ data/embeddings.bin data/embeddings_index.json
+git commit -m "chore: refresh MiniLM ONNX export to revision <sha>"
+bin/rails import:embeddings   # repopula books.embedding
+```
 
 ---
 
@@ -249,6 +307,7 @@ Esta tarea ejecuta secuencialmente:
 - **Rails**: `8.1.3.1`
 - **SQLite3**: `>= 3.35.0`
 - **Node.js**: `>= 18.0.0` (para scripts de auditoría y capturas opcionales)
+- **Python 3** (opcional, solo para regenerar la pipeline de datos o el modelo ONNX)
 
 ### Pasos de Instalación
 
