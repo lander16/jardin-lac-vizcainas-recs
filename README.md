@@ -1,6 +1,6 @@
 # 📖 Jardín LAC Vizcaínas — Sistema de Recomendaciones y Catálogo Inteligente
 
-Un sistema integral de recomendaciones de lectura híbridas y exploración bibliográfica en red desarrollado para la biblioteca **Jardín LAC**. El sistema combina análisis de datos avanzado en Python (procesamiento de registros catalográficos MARC21 de Koha ILS, incrustaciones vectoriales TF-IDF, filtrado colaborativo con distancia de Jaccard y grafos de autoridades) con una plataforma web en **Ruby on Rails 8** orientada a la experiencia de usuario (Hotwire Turbo, Stimulus JS y visualizaciones interactivas D3.js).
+Un sistema integral de recomendaciones de lectura híbridas y exploración bibliográfica en red desarrollado para la biblioteca **Jardín LAC**. El sistema combina análisis de datos avanzado en Python (procesamiento de registros catalográficos MARC21 de Koha ILS, incrustaciones semánticas con sentence-transformers, filtrado colaborativo con distancia de Jaccard y grafos de autoridades) con una plataforma web en **Ruby on Rails 8** orientada a la experiencia de usuario (Hotwire Turbo, Stimulus JS y visualizaciones interactivas D3.js).
 
 ---
 
@@ -19,7 +19,7 @@ Un sistema integral de recomendaciones de lectura híbridas y exploración bibli
 | Detalle de Obra e Inspector de Similitud | Red de Autoridades Catalográficas (Historia de las Mujeres Filósofas) |
 | :---: | :---: |
 | ![Detalle de Obra](public/screenshots/05_book_detail_similarities_v5.png) | ![Grafo de Autoridades](public/screenshots/06_catalog_authority_graph_v5.png) |
-| *Motor de similitud en 2 niveles (Vectores TF-IDF y Autoridades compartidas).* | *Red interconectada de autoridades (autores, materias, periodos) y obras vinculadas.* |
+| *Motor de similitud en 2 niveles (Embeddings Semánticos y Autoridades compartidas).* | *Red interconectada de autoridades (autores, materias, periodos) y obras vinculadas.* |
 
 ---
 
@@ -30,7 +30,7 @@ Un sistema integral de recomendaciones de lectura híbridas y exploración bibli
 - [🐍 Pipeline de Análisis de Datos (Python)](#-pipeline-de-análisis-de-datos-python)
   - [1. Extracción del Catálogo Koha ILS](#1-extracción-del-catálogo-koha-ils)
   - [2. Enriquecimiento con Datos de Goodreads](#2-enriquecimiento-con-datos-de-goodreads)
-  - [3. Matriz de Similitud Vectorial de Contenido (TF-IDF + Coseno)](#3-matriz-de-similitud-vectorial-de-contenido-tf-idf--coseno)
+  - [3. Matriz de Similitud Semántica (sentence-transformers + Coseno)](#3-matriz-de-similitud-semántica-sentence-transformers--coseno)
   - [4. Filtrado Colaborativo de Lectores (Índice de Jaccard)](#4-filtrado-colaborativo-de-lectores-índice-de-jaccard)
   - [5. Red y Grafo de Autoridades Catalográficas (MARC21)](#5-red-y-grafo-de-autoridades-catalográficas-marc21)
 - [💎 Aplicación Web (Ruby on Rails 8)](#-aplicación-web-ruby-on-rails-8)
@@ -64,7 +64,7 @@ El proyecto está diseñado bajo una arquitectura limpia en dos capas acopladas 
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                    CAPA DE ANÁLISIS DE DATOS (PYTHON)                    │
 │                                                                         │
-│  Extracción Koha ──► Mapping Goodreads ──► TF-IDF & Embeddings Coseno   │
+│  Extracción Koha ──► Mapping Goodreads ──► Embeddings Semánticos & Coseno   │
 │         │                                        │                      │
 │         ▼                                        ▼                      │
 │  Selección Lectores ──► Jaccard Colaborativo ──► Grafo Autoridades MARC │
@@ -99,10 +99,10 @@ Toda la lógica de procesamiento masivo de datos se ejecuta en Python (`pipeline
 - **Script**: `pipeline/match_koha_goodreads.py`
 - Mapea obras del catálogo local con registros de Goodreads para enriquecer descripciones, portadas y métricas globales de popularidad.
 
-### 3. Matriz de Similitud Vectorial de Contenido (TF-IDF + Coseno)
+### 3. Matriz de Similitud Semántica (sentence-transformers + Coseno)
 
 - **Script**: `pipeline/embed_books.py`
-- Construye vectores de caracterización para cada obra procesando títulos, sinopsis y descriptores catalográficos mediante **TF-IDF (Term Frequency - Inverse Document Frequency)**.
+- Construye vectores de caracterización para cada obra procesando títulos, sinopsis y descriptores catalográficos mediante el modelo **`all-MiniLM-L6-v2` de sentence-transformers** (384 dimensiones, multilingüe).
 - Calcula la **Similitud Coseno** entre todos los pares de libros:
   $$\text{SimilitudCoseno}(A, B) = \frac{A \cdot B}{\|A\| \|B\|}$$
 - Produce **24,500 pares de similitud temática** almacenados en `data/content_similarities.json`.
@@ -129,7 +129,7 @@ La aplicación web en Rails 8 provee una interfaz ágil, reactiva y responsive p
 
 ### Stack Tecnológico
 
-- **Framework**: Ruby on Rails `8.1.3.1` (Ruby `3.4.1`)
+- **Framework**: Ruby on Rails `8.1.3.1` (Ruby `3.4.9`)
 - **Base de Datos**: SQLite 3 (`storage/production.sqlite3` en producción)
 - **Frontend Reactive**: Hotwire (Turbo Frames & Turbo Streams + Stimulus JS v3)
 - **Visualización de Grafos**: D3.js v7 (Fuerza dirigida en SVG / Canvas)
@@ -147,7 +147,7 @@ La aplicación web en Rails 8 provee una interfaz ágil, reactiva y responsive p
         ▼*                                           ▼*
 ┌──────────────────┐                     ┌──────────────────────┐
 │ UserSimilarity   │                     │ ContentSimilarity    │
-│(Jaccard Lectores)│                     │(Vectores TF-IDF)     │
+│(Jaccard Lectores)│                     │(Embeddings Semánticos)     │
 └──────────────────┘                     └──────────────────────┘
                                                      │
                                                      │1
@@ -177,7 +177,7 @@ $$S_{\text{final}}(B) = w_{\text{content}} \cdot \hat{S}_{\text{content}}(B) + w
 
 Donde:
 
-- $\hat{S}_{\text{content}}(B)$: Similitud acumulada de contenido (TF-IDF) entre la obra $B$ y las obras leídas por el usuario.
+- $\hat{S}_{\text{content}}(B)$: Similitud acumulada de contenido (embeddings semánticos) entre la obra $B$ y las obras leídas por el usuario.
 - $\hat{S}_{\text{collab}}(B)$: Puntuación colaborativa obtenida de los hábitos de lectores afines (distancia Jaccard).
 - $\hat{S}_{\text{auth}}(B)$: Similitud estructural por autoridades compartidas (autores y materias comunes).
 - Los pesos $w_{\text{content}}, w_{\text{collab}}, w_{\text{auth}}$ se pueden ajustar dinámicamente mediante los deslizadores interactivos en la vista del lector.
@@ -188,7 +188,7 @@ Donde:
 
 Al visualizar el detalle de un libro (`/books/:id`), el controlador implementa un motor de similitud en 2 niveles:
 
-1. **Nivel Primario**: Recupera las obras con mayor similitud vectorial TF-IDF desde `ContentSimilarity`.
+1. **Nivel Primario**: Recupera las obras con mayor similitud semántica desde `ContentSimilarity`.
 2. **Nivel Secundario (Fallback)**: Para obras sin vectores precalculados, ejecuta una consulta relacional optimizada que agrupa libros por el número máximo de autoridades catalográficas compartidas (`BookAuthority`), garantizando que **todas las obras del catálogo presenten sugerencias afines**.
 
 ---

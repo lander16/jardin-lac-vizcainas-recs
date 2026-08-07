@@ -3,7 +3,7 @@ class BooksController < ApplicationController
     @book = Book.find(params[:id])
     @checked_by = @book.patrons.order(:name)
 
-    # 1. Primary: Vector similarity from TF-IDF ContentSimilarity
+    # 1. Primary: Vector similarity from sentence-transformer ContentSimilarity
     content_sims = ContentSimilarity.where(book_id: @book.id)
                                     .or(ContentSimilarity.where(similar_book_id: @book.id))
                                     .order(similarity: :desc)
@@ -17,7 +17,7 @@ class BooksController < ApplicationController
           book: target_book,
           similarity: cs.similarity,
           percentage: (cs.similarity * 100).round,
-          source_label: "Vectores (TF-IDF)"
+          source_label: "Vectores (Embeddings Semánticos)"
         }
       end
     else
