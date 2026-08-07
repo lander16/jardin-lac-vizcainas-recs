@@ -44,15 +44,19 @@ class CatalogSearchService
   private
 
   def candidate_books(query_tokens)
-    # SQL pre-filter with two tiers per query token so typos at the
+    # SQL pre-filter with three tiers per query token so typos at the
     # SQL level still produce candidates for the Ruby Levenshtein
     # scorer to rank:
     #   1. Exact substring — e.g. '%pedro%' matches "Pedro".
     #   2. First-5-chars prefix (when the token is at least 5 chars)
-    #      — e.g. '%shake%' matches "Shakespeare" even when the
-    #      query is "shakesrpeare" (transposition). Without this
-    #      tier a typo'd query produces zero candidates and the
-    #      Levenshtein never runs.
+    #      — catches typos at the end / transpositions toward the
+    #      middle, e.g. '%shake%' matches "Shakespeare" when the
+    #      query is "shakesrpeare" (r in the wrong place).
+    #   3. 3-character substrings (trigrams) of the query — catches
+    #      dropped first chars ("akespeare" → "shakespeare") and
+    #      short mid-word transpositions ("pedrp" → "pedro").
+    # Without these tiers, typo'd queries produce zero candidates and
+    # the Levenshtein never runs.
     # Authority names are scored in Ruby on the shortlist (the cross-
     # table JOIN is expensive and rarely contributes more candidates
     # than the title/author LIKE).
@@ -60,22 +64,27 @@ class CatalogSearchService
     conditions = []
     bindings = []
     query_tokens.each do |tok|
-      # Tier 1: exact substring.
-      full_like = "%#{ActiveRecord::Base.sanitize_sql_like(tok)}%"
-      conditions << "(LOWER(books.title) LIKE ? OR LOWER(books.author) LIKE ?)"
-      bindings << full_like
-      bindings << full_like
+      add_like(conditions, bindings, tok)
 
-      # Tier 2: prefix fallback for typo tolerance.
       if tok.length >= 5
-        prefix = tok[0, 5]
-        prefix_like = "%#{ActiveRecord::Base.sanitize_sql_like(prefix)}%"
-        conditions << "(LOWER(books.title) LIKE ? OR LOWER(books.author) LIKE ?)"
-        bindings << prefix_like
-        bindings << prefix_like
+        add_like(conditions, bindings, tok[0, 5])
       end
+
+      trigrams_of(tok).each { |tri| add_like(conditions, bindings, tri) }
     end
     scope.where(conditions.join(" OR "), *bindings).distinct.limit(CANDIDATE_LIMIT)
+  end
+
+  def add_like(conditions, bindings, pattern)
+    like = "%#{ActiveRecord::Base.sanitize_sql_like(pattern)}%"
+    conditions << "(LOWER(books.title) LIKE ? OR LOWER(books.author) LIKE ?)"
+    bindings << like
+    bindings << like
+  end
+
+  def trigrams_of(text)
+    return [] if text.length < 3
+    (0..text.length - 3).map { |i| text[i, 3] }.uniq
   end
 
   def score_book(book, query_tokens, query_embedding, book_embedding, w_semantic)

@@ -101,4 +101,35 @@ class CatalogSearchServiceTest < ActiveSupport::TestCase
                       "isn't in the book metadata"
     end
   end
+
+  test "SQL pre-filter catches dropped first character via trigrams" do
+    # "akespeare" (no leading 's') is matched because the trigrams
+    # "kes", "esp", "spe", "pea", "ear", "are" all overlap with
+    # "shakespeare" (6 of 7 trigrams).
+    with_stubbed_class_method(QueryEmbedder, :default, fake_embedder(available: false)) do
+      Book.create!(id: "shake_1", title: "Hamlet", author: "Shakespeare, William")
+
+      results = CatalogSearchService.search("akespeare", limit: 10)
+      ids = results.map { |r| r[:biblio_id] }
+
+      assert_includes ids, "shake_1",
+                      "Shakespeare should appear via the trigram fallback " \
+                      "even though the query is missing the first 's'"
+    end
+  end
+
+  test "SQL pre-filter catches mid-word transpositions via trigrams" do
+    # "pedrp" (r in the wrong place vs "pedro") is matched because the
+    # trigrams "ped" and "edr" both overlap with "pedro" (2 of 3).
+    with_stubbed_class_method(QueryEmbedder, :default, fake_embedder(available: false)) do
+      Book.create!(id: "pedro_1", title: "Pedro Páramo", author: "Rulfo, Juan")
+
+      results = CatalogSearchService.search("pedrp", limit: 10)
+      ids = results.map { |r| r[:biblio_id] }
+
+      assert_includes ids, "pedro_1",
+                      "Pedro should appear via the trigram fallback " \
+                      "even though 'pedrp' has the r in the wrong place"
+    end
+  end
 end
