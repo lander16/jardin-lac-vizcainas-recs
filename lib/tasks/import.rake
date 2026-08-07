@@ -119,7 +119,7 @@ namespace :import do
     end
 
     records.each_slice(1000) do |slice|
-      Checkout.insert_all(slice, unique_by: [:patron_id, :book_id])
+      Checkout.insert_all(slice, unique_by: [ :patron_id, :book_id ])
     end
 
     # Single SQL statement to update counter cache for all patrons at once
@@ -190,7 +190,7 @@ namespace :import do
     # Deduplicate book_authorities by [book_id, authority_id]
     unique_ba = book_auth_records.uniq { |r| [ r[:book_id], r[:authority_id] ] }
     unique_ba.each_slice(1000) do |slice|
-      BookAuthority.insert_all(slice, unique_by: [:book_id, :authority_id])
+      BookAuthority.insert_all(slice, unique_by: [ :book_id, :authority_id ])
     end
 
     # Single SQL statement to update counter cache for all authorities at once
@@ -236,7 +236,7 @@ namespace :import do
     records.uniq! { |r| [ r[:source_book_id], r[:target_book_id] ] }
 
     records.each_slice(1000) do |slice|
-      BookConnection.insert_all(slice, unique_by: [:source_book_id, :target_book_id])
+      BookConnection.insert_all(slice, unique_by: [ :source_book_id, :target_book_id ])
     end
 
     puts "  -> #{BookConnection.count} book connections imported."
@@ -277,7 +277,7 @@ namespace :import do
     records.uniq! { |r| [ r[:book_id], r[:similar_book_id] ] }
 
     records.each_slice(1000) do |slice|
-      ContentSimilarity.insert_all(slice, unique_by: [:book_id, :similar_book_id])
+      ContentSimilarity.insert_all(slice, unique_by: [ :book_id, :similar_book_id ])
     end
 
     puts "  -> #{ContentSimilarity.count} content similarities imported."
@@ -318,7 +318,7 @@ namespace :import do
     records.uniq! { |r| [ r[:patron_id], r[:similar_patron_id] ] }
 
     records.each_slice(1000) do |slice|
-      UserSimilarity.insert_all(slice, unique_by: [:patron_id, :similar_patron_id])
+      UserSimilarity.insert_all(slice, unique_by: [ :patron_id, :similar_patron_id ])
     end
 
     puts "  -> #{UserSimilarity.count} user similarities imported."

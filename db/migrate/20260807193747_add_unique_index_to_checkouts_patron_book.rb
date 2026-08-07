@@ -10,11 +10,11 @@ class AddUniqueIndexToCheckoutsPatronBook < ActiveRecord::Migration[8.1]
     SQL
 
     remove_index :checkouts, name: "index_checkouts_on_patron_id_and_book_id"
-    add_index :checkouts, [:patron_id, :book_id], unique: true
+    add_index :checkouts, [ :patron_id, :book_id ], unique: true
   end
 
   def down
-    remove_index :checkouts, [:patron_id, :book_id]
-    add_index :checkouts, [:patron_id, :book_id]
+    remove_index :checkouts, [ :patron_id, :book_id ]
+    add_index :checkouts, [ :patron_id, :book_id ]
   end
 end
