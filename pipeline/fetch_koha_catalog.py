@@ -14,9 +14,17 @@ import sys
 import time
 
 # --- Configuration ---
-CLIENT_ID = "5e9144be-9811-4a5b-b3b8-22be7e6d8fd6"
-CLIENT_SECRET = "695aebc6-c58c-4823-bc9e-9bdd96b088e1"
-BASE_URL = "https://adminvizcainas.xelibrary.com/api/v1"
+# Credentials are read from environment variables to keep them out of source.
+# Set KOHA_CLIENT_ID and KOHA_CLIENT_SECRET in your shell or .env file.
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
+CLIENT_ID = os.environ["KOHA_CLIENT_ID"]
+CLIENT_SECRET = os.environ["KOHA_CLIENT_SECRET"]
+BASE_URL = os.environ.get("KOHA_BASE_URL", "https://adminvizcainas.xelibrary.com/api/v1")
 TOKEN_URL = f"{BASE_URL}/oauth/token"
 
 # Batch size and throttle to avoid overloading the server
