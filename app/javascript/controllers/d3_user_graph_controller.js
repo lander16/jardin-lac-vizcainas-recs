@@ -26,7 +26,11 @@ export default class extends Controller {
       this.renderGraph(data)
     } catch (err) {
       if (this.hasPanelTarget) {
-        this.panelTarget.innerHTML = `<div style="padding:2rem; text-align:center; color:var(--color-accent);">Error al cargar grafo: ${err.message}</div>`
+        this.panelTarget.replaceChildren()
+        const errEl = document.createElement("div")
+        errEl.style.cssText = "padding:2rem; text-align:center; color:var(--color-accent);"
+        errEl.textContent = `Error al cargar grafo: ${err.message}`
+        this.panelTarget.appendChild(errEl)
       }
     }
   }
@@ -140,38 +144,93 @@ export default class extends Controller {
 
   inspectNode(node) {
     if (!this.hasPanelTarget) return
+    this.panelTarget.replaceChildren()
 
-    let html = ""
+    const wrap = document.createElement("div")
+    wrap.style.padding = "0.5rem"
+
+    const label = document.createElement("div")
+    label.style.cssText = "font-size:0.75rem; text-transform:uppercase; font-weight:700; margin-bottom:0.25rem;"
+
+    const h3 = document.createElement("h3")
+    h3.style.cssText = "font-family:var(--font-display); font-weight:700; margin:0 0 0.5rem 0;"
+
     if (node.type === "target_user" || node.type === "similar_user") {
       const isTarget = node.type === "target_user"
-      html = `
-        <div style="padding:0.5rem;">
-          <div style="font-size:0.75rem; text-transform:uppercase; color:var(--color-accent); font-weight:700; margin-bottom:0.25rem;">
-            <i class="fa-solid fa-user"></i> ${isTarget ? "Lector Principal" : "Lector Afín"}
-          </div>
-          <h3 style="font-family:var(--font-display); font-size:1.4rem; font-weight:700; margin:0 0 0.5rem 0;">${node.name}</h3>
-          ${node.jaccard ? `<div style="font-size:0.85rem; color:var(--color-sage); font-weight:600; margin-bottom:1rem;"><i class="fa-solid fa-percent"></i> ${Math.round(node.jaccard * 100)}% de afinidad Jaccard</div>` : ""}
-          <a href="/users/${node.id}" class="btn btn-primary" style="font-size:0.8rem; padding:0.4rem 0.8rem; width:100%; justify-content:center;">
-            Ver Perfil de Recomendaciones <i class="fa-solid fa-arrow-right"></i>
-          </a>
-        </div>
-      `
+      label.style.color = "var(--color-accent)"
+      h3.style.fontSize = "1.4rem"
+
+      const labelIcon = document.createElement("i")
+      labelIcon.className = "fa-solid fa-user"
+      labelIcon.setAttribute("aria-hidden", "true")
+      label.appendChild(labelIcon)
+      label.appendChild(document.createTextNode(` ${isTarget ? "Lector Principal" : "Lector Afín"}`))
+
+      h3.textContent = node.name
+
+      wrap.appendChild(label)
+      wrap.appendChild(h3)
+
+      if (node.jaccard) {
+        const jaccard = document.createElement("div")
+        jaccard.style.cssText = "font-size:0.85rem; color:var(--color-sage); font-weight:600; margin-bottom:1rem;"
+        const jIcon = document.createElement("i")
+        jIcon.className = "fa-solid fa-percent"
+        jIcon.setAttribute("aria-hidden", "true")
+        jaccard.appendChild(jIcon)
+        jaccard.appendChild(document.createTextNode(` ${Math.round(node.jaccard * 100)}% de afinidad Jaccard`))
+        wrap.appendChild(jaccard)
+      }
+
+      const link = document.createElement("a")
+      link.href = `/users/${node.id}`
+      link.className = "btn btn-primary"
+      link.style.cssText = "font-size:0.8rem; padding:0.4rem 0.8rem; width:100%; justify-content:center;"
+      link.appendChild(document.createTextNode("Ver Perfil de Recomendaciones "))
+      const arrIcon = document.createElement("i")
+      arrIcon.className = "fa-solid fa-arrow-right"
+      arrIcon.setAttribute("aria-hidden", "true")
+      link.appendChild(arrIcon)
+      wrap.appendChild(link)
     } else {
       const bookId = node.id.replace("book_", "").replace("collab_book_", "")
-      html = `
-        <div style="padding:0.5rem;">
-          <div style="font-size:0.75rem; text-transform:uppercase; color:var(--color-slate); font-weight:700; margin-bottom:0.25rem;">
-            <i class="fa-solid fa-book"></i> Obra en Red
-          </div>
-          <h3 style="font-family:var(--font-display); font-size:1.3rem; font-weight:700; margin:0 0 0.5rem 0;">${node.name}</h3>
-          ${node.author ? `<div style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:1rem;"><i class="fa-solid fa-feather"></i> ${node.author}</div>` : ""}
-          <a href="/books/${bookId}" class="btn btn-secondary" style="font-size:0.8rem; padding:0.4rem 0.8rem; width:100%; justify-content:center;">
-            Ver Ficha del Libro <i class="fa-solid fa-arrow-right"></i>
-          </a>
-        </div>
-      `
+      label.style.color = "var(--color-slate)"
+      h3.style.fontSize = "1.3rem"
+
+      const labelIcon = document.createElement("i")
+      labelIcon.className = "fa-solid fa-book"
+      labelIcon.setAttribute("aria-hidden", "true")
+      label.appendChild(labelIcon)
+      label.appendChild(document.createTextNode(" Obra en Red"))
+
+      h3.textContent = node.name
+
+      wrap.appendChild(label)
+      wrap.appendChild(h3)
+
+      if (node.author) {
+        const author = document.createElement("div")
+        author.style.cssText = "font-size:0.85rem; color:var(--text-secondary); margin-bottom:1rem;"
+        const aIcon = document.createElement("i")
+        aIcon.className = "fa-solid fa-feather"
+        aIcon.setAttribute("aria-hidden", "true")
+        author.appendChild(aIcon)
+        author.appendChild(document.createTextNode(` ${node.author}`))
+        wrap.appendChild(author)
+      }
+
+      const link = document.createElement("a")
+      link.href = `/books/${bookId}`
+      link.className = "btn btn-secondary"
+      link.style.cssText = "font-size:0.8rem; padding:0.4rem 0.8rem; width:100%; justify-content:center;"
+      link.appendChild(document.createTextNode("Ver Ficha del Libro "))
+      const arrIcon = document.createElement("i")
+      arrIcon.className = "fa-solid fa-arrow-right"
+      arrIcon.setAttribute("aria-hidden", "true")
+      link.appendChild(arrIcon)
+      wrap.appendChild(link)
     }
 
-    this.panelTarget.innerHTML = html
+    this.panelTarget.appendChild(wrap)
   }
 }

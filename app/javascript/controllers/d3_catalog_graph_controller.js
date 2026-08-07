@@ -26,7 +26,11 @@ export default class extends Controller {
       this.renderGraph(data)
     } catch (err) {
       if (this.hasPanelTarget) {
-        this.panelTarget.innerHTML = `<div style="padding:2rem; text-align:center; color:var(--color-accent);">Error al cargar grafo de catálogo: ${err.message}</div>`
+        this.panelTarget.replaceChildren()
+        const errEl = document.createElement("div")
+        errEl.style.cssText = "padding:2rem; text-align:center; color:var(--color-accent);"
+        errEl.textContent = `Error al cargar grafo de catálogo: ${err.message}`
+        this.panelTarget.appendChild(errEl)
       }
     }
   }
@@ -128,43 +132,107 @@ export default class extends Controller {
 
   inspectNode(node) {
     if (!this.hasPanelTarget) return
+    this.panelTarget.replaceChildren()
 
-    let html = ""
+    const wrap = document.createElement("div")
+    wrap.style.padding = "0.5rem"
+
+    const label = document.createElement("div")
+    label.style.cssText = "font-size:0.75rem; text-transform:uppercase; font-weight:700; margin-bottom:0.25rem;"
+
+    const h3 = document.createElement("h3")
+    h3.style.cssText = "font-family:var(--font-display); font-weight:700; margin:0 0 0.5rem 0;"
+
     if (node.type === "authority") {
-      const authId = node.id.replace("auth_", "")
-      html = `
-        <div style="padding:0.5rem;">
-          <div style="font-size:0.75rem; text-transform:uppercase; color:var(--color-authority); font-weight:700; margin-bottom:0.25rem;">
-            <i class="fa-solid fa-tag"></i> Autoridad Catalogada
-          </div>
-          <h3 style="font-family:var(--font-display); font-size:1.4rem; font-weight:700; margin:0 0 0.5rem 0;">${node.name}</h3>
-          ${node.auth_type ? `<div style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:0.5rem;"><strong>Tipo:</strong> ${node.auth_type}</div>` : ""}
-          <a href="/catalog" class="btn btn-primary" style="font-size:0.8rem; padding:0.4rem 0.8rem; width:100%; justify-content:center; margin-top:0.75rem;">
-            Explorar en el Catálogo <i class="fa-solid fa-arrow-right"></i>
-          </a>
-        </div>
-      `
+      label.style.color = "var(--color-authority)"
+      h3.style.fontSize = "1.4rem"
+
+      const labelIcon = document.createElement("i")
+      labelIcon.className = "fa-solid fa-tag"
+      labelIcon.setAttribute("aria-hidden", "true")
+      label.appendChild(labelIcon)
+      label.appendChild(document.createTextNode(" Autoridad Catalogada"))
+
+      h3.textContent = node.name
+
+      wrap.appendChild(label)
+      wrap.appendChild(h3)
+
+      if (node.auth_type) {
+        const typeEl = document.createElement("div")
+        typeEl.style.cssText = "font-size:0.85rem; color:var(--text-secondary); margin-bottom:0.5rem;"
+        const strong = document.createElement("strong")
+        strong.textContent = "Tipo:"
+        typeEl.appendChild(strong)
+        typeEl.appendChild(document.createTextNode(` ${node.auth_type}`))
+        wrap.appendChild(typeEl)
+      }
+
+      const link = document.createElement("a")
+      link.href = "/catalog"
+      link.className = "btn btn-primary"
+      link.style.cssText = "font-size:0.8rem; padding:0.4rem 0.8rem; width:100%; justify-content:center; margin-top:0.75rem;"
+      link.appendChild(document.createTextNode("Explorar en el Catálogo "))
+      const arrIcon = document.createElement("i")
+      arrIcon.className = "fa-solid fa-arrow-right"
+      arrIcon.setAttribute("aria-hidden", "true")
+      link.appendChild(arrIcon)
+      wrap.appendChild(link)
     } else {
       const bookId = node.id.replace("book_", "").replace("collab_book_", "")
-      html = `
-        <div style="padding:0.5rem;">
-          <div style="font-size:0.75rem; text-transform:uppercase; color:var(--color-accent); font-weight:700; margin-bottom:0.25rem;">
-            <i class="fa-solid fa-book"></i> Obra del Acervo
-          </div>
-          <h3 style="font-family:var(--font-display); font-size:1.3rem; font-weight:700; margin:0 0 0.5rem 0;">${node.name}</h3>
-          ${node.author ? `<div style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:1rem;"><i class="fa-solid fa-feather"></i> ${node.author}</div>` : ""}
-          <div style="display:flex; flex-direction:column; gap:0.5rem;">
-            <a href="/books/${bookId}" class="btn btn-secondary" style="font-size:0.8rem; padding:0.4rem 0.8rem; justify-content:center;">
-              Ver Ficha de la Obra <i class="fa-solid fa-arrow-right"></i>
-            </a>
-            <a href="/catalog/graph/${bookId}" class="btn btn-primary" style="font-size:0.8rem; padding:0.4rem 0.8rem; justify-content:center;">
-              Ver Grafo de esta Obra <i class="fa-solid fa-diagram-project"></i>
-            </a>
-          </div>
-        </div>
-      `
+      label.style.color = "var(--color-accent)"
+      h3.style.fontSize = "1.3rem"
+
+      const labelIcon = document.createElement("i")
+      labelIcon.className = "fa-solid fa-book"
+      labelIcon.setAttribute("aria-hidden", "true")
+      label.appendChild(labelIcon)
+      label.appendChild(document.createTextNode(" Obra del Acervo"))
+
+      h3.textContent = node.name
+
+      wrap.appendChild(label)
+      wrap.appendChild(h3)
+
+      if (node.author) {
+        const author = document.createElement("div")
+        author.style.cssText = "font-size:0.85rem; color:var(--text-secondary); margin-bottom:1rem;"
+        const aIcon = document.createElement("i")
+        aIcon.className = "fa-solid fa-feather"
+        aIcon.setAttribute("aria-hidden", "true")
+        author.appendChild(aIcon)
+        author.appendChild(document.createTextNode(` ${node.author}`))
+        wrap.appendChild(author)
+      }
+
+      const actions = document.createElement("div")
+      actions.style.cssText = "display:flex; flex-direction:column; gap:0.5rem;"
+
+      const ficha = document.createElement("a")
+      ficha.href = `/books/${bookId}`
+      ficha.className = "btn btn-secondary"
+      ficha.style.cssText = "font-size:0.8rem; padding:0.4rem 0.8rem; justify-content:center;"
+      ficha.appendChild(document.createTextNode("Ver Ficha de la Obra "))
+      const fIcon = document.createElement("i")
+      fIcon.className = "fa-solid fa-arrow-right"
+      fIcon.setAttribute("aria-hidden", "true")
+      ficha.appendChild(fIcon)
+      actions.appendChild(ficha)
+
+      const grafo = document.createElement("a")
+      grafo.href = `/catalog/graph/${bookId}`
+      grafo.className = "btn btn-primary"
+      grafo.style.cssText = "font-size:0.8rem; padding:0.4rem 0.8rem; justify-content:center;"
+      grafo.appendChild(document.createTextNode("Ver Grafo de esta Obra "))
+      const gIcon = document.createElement("i")
+      gIcon.className = "fa-solid fa-diagram-project"
+      gIcon.setAttribute("aria-hidden", "true")
+      grafo.appendChild(gIcon)
+      actions.appendChild(grafo)
+
+      wrap.appendChild(actions)
     }
 
-    this.panelTarget.innerHTML = html
+    this.panelTarget.appendChild(wrap)
   }
 }
