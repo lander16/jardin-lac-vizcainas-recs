@@ -16,8 +16,9 @@ class DashboardController < ApplicationController
   def users_search
     query = params[:q].to_s.strip.downcase
     @users = if query.present?
+               escaped = "%#{ActiveRecord::Base.sanitize_sql_like(query)}%"
                Patron.where("LOWER(name) LIKE ? OR LOWER(email) LIKE ? OR cardnumber LIKE ?",
-                            "%#{query}%", "%#{query}%", "%#{query}%")
+                            escaped, escaped, escaped)
                      .order(:name)
     else
                Patron.order(:name)

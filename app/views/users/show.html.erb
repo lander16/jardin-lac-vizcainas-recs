@@ -53,7 +53,7 @@
             <span style="color:var(--color-content);"><i class="fa-solid fa-book"></i> Contenido</span>
             <span data-balance-target="contentVal"><%= (@w_content * 100).round %>%</span>
           </div>
-          <input type="range" id="slider-content" aria-label="Ponderación de Contenido" min="0" max="1" step="0.01" value="<%= @w_content %>" class="slider-content"
+          <input type="range" id="slider-content" aria-label="Ponderación de Contenido" min="0" max="1" step="0.01" value="<%= @w_content %>" class="slider-range-content"
                  data-balance-target="contentSlider" data-action="input->balance#update">
         </div>
 
@@ -62,7 +62,7 @@
             <span style="color:var(--color-collab);"><i class="fa-solid fa-users"></i> Lectores Afines</span>
             <span data-balance-target="collabVal"><%= (@w_collab * 100).round %>%</span>
           </div>
-          <input type="range" id="slider-collab" aria-label="Ponderación de Lectores Afines" min="0" max="1" step="0.01" value="<%= @w_collab %>" class="slider-collab"
+          <input type="range" id="slider-collab" aria-label="Ponderación de Lectores Afines" min="0" max="1" step="0.01" value="<%= @w_collab %>" class="slider-range-collab"
                  data-balance-target="collabSlider" data-action="input->balance#update">
         </div>
 
@@ -71,7 +71,7 @@
             <span style="color:var(--color-authority);"><i class="fa-solid fa-tags"></i> Autoridades</span>
             <span data-balance-target="authVal"><%= (@w_auth * 100).round %>%</span>
           </div>
-          <input type="range" id="slider-auth" aria-label="Ponderación de Autoridades Catalográficas" min="0" max="1" step="0.01" value="<%= @w_auth %>" class="slider-auth"
+          <input type="range" id="slider-auth" aria-label="Ponderación de Autoridades Catalográficas" min="0" max="1" step="0.01" value="<%= @w_auth %>" class="slider-range-auth"
                  data-balance-target="authSlider" data-action="input->balance#update">
         </div>
       </div>

@@ -7,7 +7,15 @@ export default class extends Controller {
 
   connect() {
     if (!this.hasContainerTarget || !this.urlValue) return
+    this.simulation = null
     this.loadGraph()
+  }
+
+  disconnect() {
+    if (this.simulation) {
+      this.simulation.stop()
+      this.simulation = null
+    }
   }
 
   async loadGraph() {
@@ -63,6 +71,9 @@ export default class extends Controller {
       .force("charge", d3.forceManyBody().strength(-250))
       .force("center", d3.forceCenter(width / 2, height / 2))
       .force("collide", d3.forceCollide().radius(d => (d.radius || 10) + 5))
+      .alphaDecay(0.05)
+      .velocityDecay(0.4)
+    this.simulation = simulation
 
     // Render links
     const link = g.append("g")
@@ -100,7 +111,6 @@ export default class extends Controller {
       .attr("fill", d => colors[d.group] || "#7c1933")
       .attr("stroke", "#ffffff")
       .attr("stroke-width", 2)
-      .attr("box-shadow", "0 2px 8px rgba(0,0,0,0.1)")
 
     node.append("text")
       .text(d => d.name)

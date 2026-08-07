@@ -53,6 +53,15 @@ export default class extends Controller {
     this.collabSliderTarget.value = l.toFixed(2)
     this.authSliderTarget.value = a.toFixed(2)
 
+    // Clamp any floating-point drift so the three weights always sum to exactly 1.0.
+    const total = c + l + a
+    if (total > 0 && total !== 1.0) {
+      c /= total; l /= total; a /= total
+      this.contentSliderTarget.value = c.toFixed(2)
+      this.collabSliderTarget.value = l.toFixed(2)
+      this.authSliderTarget.value = a.toFixed(2)
+    }
+
     this.contentValTarget.textContent = `${Math.round(c * 100)}%`
     this.collabValTarget.textContent = `${Math.round(l * 100)}%`
     this.authValTarget.textContent = `${Math.round(a * 100)}%`
