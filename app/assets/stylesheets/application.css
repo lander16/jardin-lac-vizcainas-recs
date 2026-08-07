@@ -34,6 +34,16 @@
   box-sizing: border-box;
 }
 
+/* Respect users who have asked the OS to reduce motion (vestibular safety) */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 body {
   background-color: var(--bg-primary);
   color: var(--text-primary);
@@ -801,21 +811,6 @@ input[type=range]::-webkit-slider-thumb:hover {
   border: 1px solid var(--border-light);
   position: relative;
   overflow: hidden;
-}
-
-.graph-tooltip {
-  position: absolute;
-  background: var(--bg-card);
-  border: 1px solid var(--text-muted);
-  padding: 0.75rem 1rem;
-  border-radius: 0.25rem;
-  font-size: 0.85rem;
-  color: var(--text-primary);
-  pointer-events: none;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-  z-index: 10;
-  max-width: 250px;
-  display: none;
 }
 
 .graph-legend {

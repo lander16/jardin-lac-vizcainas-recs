@@ -44,5 +44,6 @@ Thumbs.db
 /tmp/storage/*
 !/tmp/storage/.keep
 /log/*.log
+/log/*.log.*
 /public/assets
 
