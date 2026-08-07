@@ -82,8 +82,11 @@ class RecommendationService
     scored_candidates.sort_by! { |c| -c[:score] }
     top_candidates = scored_candidates.first(limit)
 
-    # Hydrate book details
-    books_by_id = Book.where(id: top_candidates.map { |c| c[:book_id] }).index_by(&:id)
+    # Hydrate book details (preload authorities to avoid N+1 on book.authorities.count
+    # in build_explanation below).
+    books_by_id = Book.includes(:authorities)
+                      .where(id: top_candidates.map { |c| c[:book_id] })
+                      .index_by(&:id)
 
     top_candidates.map do |item|
       b = books_by_id[item[:book_id]]
@@ -122,25 +125,27 @@ class RecommendationService
   def compute_collab_scores
     scores = Hash.new(0.0)
 
-    # Find users who share checkouts
-    other_user_checkouts = Checkout.where.not(patron_id: @patron.id)
-                                   .pluck(:patron_id, :book_id)
+    # Use the precomputed user_similarities table instead of re-computing
+    # Jaccard over every checkout row in the system per request.
+    similar = UserSimilarity.where(patron_id: @patron.id)
+                            .where.not(similar_patron_id: @patron.id)
+                            .order(jaccard_score: :desc)
+                            .limit(50)
+                            .pluck(:similar_patron_id, :jaccard_score)
 
-    user_books_map = Hash.new { |h, k| h[k] = Set.new }
-    other_user_checkouts.each do |pid, bid|
-      user_books_map[pid] << bid.to_s
-    end
+    return scores if similar.empty?
 
-    user_books_map.each do |other_pid, other_bids|
-      intersection = (@checked_book_ids & other_bids).size
-      next if intersection.zero?
+    jaccard_by_patron = similar.to_h
+    similar_patron_ids = jaccard_by_patron.keys
 
-      union = (@checked_book_ids | other_bids).size
-      jaccard = intersection.to_f / union
+    other_checkouts = Checkout.where(patron_id: similar_patron_ids)
+                              .where.not(book_id: @checked_book_ids.to_a)
+                              .pluck(:patron_id, :book_id)
 
-      (other_bids - @checked_book_ids).each do |bid|
-        scores[bid] += jaccard
-      end
+    other_checkouts.each do |pid, bid|
+      j = jaccard_by_patron[pid]
+      next if j.nil?
+      scores[bid.to_s] += j
     end
 
     scores

@@ -18,9 +18,11 @@ class UsersController < ApplicationController
   end
 
   def recommendations_frame
-    w_content = params[:w_content].to_f
-    w_collab = params[:w_collab].to_f
-    w_auth = params[:w_auth].to_f
+    # Provide defaults so a direct hit to the frame (e.g. from a bookmark)
+    # still produces sensible results, not a zero-weight ranking.
+    w_content = (params[:w_content] || 0.33).to_f
+    w_collab  = (params[:w_collab]  || 0.33).to_f
+    w_auth    = (params[:w_auth]    || 0.34).to_f
 
     @recommendations = RecommendationService.new(@patron).recommend(
       w_content: w_content,
