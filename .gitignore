@@ -2,6 +2,11 @@
 goodreads/
 backup/
 
+# Dead prototype code removed from the tree (kept in .gitignore as a
+# safety net if anyone tries to reintroduce it).
+api/
+web/
+
 # Python cache & logs
 __pycache__/
 *.pyc
