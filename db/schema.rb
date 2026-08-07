@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_07_193747) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_07_202304) do
   create_table "authorities", id: :string, force: :cascade do |t|
     t.string "authority_type", null: false
     t.integer "books_count", default: 0, null: false
@@ -43,10 +43,23 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_07_193747) do
     t.index ["target_book_id"], name: "index_book_connections_on_target_book_id"
   end
 
+  create_table "book_words", force: :cascade do |t|
+    t.string "book_id", null: false
+    t.datetime "created_at", null: false
+    t.string "source", null: false
+    t.datetime "updated_at", null: false
+    t.string "word", null: false
+    t.index ["book_id", "word", "source"], name: "index_book_words_on_book_id_and_word_and_source", unique: true
+    t.index ["book_id"], name: "index_book_words_on_book_id"
+    t.index ["word"], name: "index_book_words_on_word"
+  end
+
   create_table "books", id: :string, force: :cascade do |t|
     t.string "author"
     t.datetime "created_at", null: false
     t.text "description"
+    t.binary "embedding"
+    t.string "embedding_model"
     t.string "source"
     t.string "title", null: false
     t.datetime "updated_at", null: false

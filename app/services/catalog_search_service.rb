@@ -1,3 +1,5 @@
+require "set"
+
 class CatalogSearchService
   WEIGHTS = { title: 1.0, author: 1.1, authority: 0.7 }.freeze
   THRESHOLD = 50.0
@@ -60,7 +62,20 @@ class CatalogSearchService
     # Authority names are scored in Ruby on the shortlist (the cross-
     # table JOIN is expensive and rarely contributes more candidates
     # than the title/author LIKE).
-    scope = Book.includes(:authorities)
+    #
+    # In parallel, the SymSpell index is consulted to find books
+    # whose dictionary words are at edit distance ≤ 2 from any
+    # query token. SymSpell handles the cases the trigrams miss
+    # (e.g. 1-insertion: "hemingwy" → "hemingway") and vice versa
+    # (e.g. 3-deletion: "hemway" → "hemingway" — trigrams catch
+    # this via the "hem" prefix, SymSpell can't because distance > 2).
+    #
+    # The two candidate sources are OR'd via ActiveRecord::Relation#or
+    # instead of being merged into a single SQL string. This keeps
+    # each side using Rails' built-in safe parameter binding (so the
+    # book_ids list — which comes from the DB, not user input —
+    # can't trigger a SQL injection false positive in brakeman).
+    base = Book.includes(:authorities)
     conditions = []
     bindings = []
     query_tokens.each do |tok|
@@ -72,7 +87,32 @@ class CatalogSearchService
 
       trigrams_of(tok).each { |tri| add_like(conditions, bindings, tri) }
     end
-    scope.where(conditions.join(" OR "), *bindings).distinct.limit(CANDIDATE_LIMIT)
+
+    scopes = []
+    scopes << base.where(conditions.join(" OR "), *bindings) if conditions.any?
+
+    symspell_ids = symspell_candidate_ids(query_tokens)
+    scopes << base.where(books: { id: symspell_ids }) if symspell_ids.any?
+
+    return base.none if scopes.empty?
+
+    scopes.reduce { |acc, s| acc.or(s) }.distinct.limit(CANDIDATE_LIMIT)
+  end
+
+  # Look up each query token in the SymSpell index and union the
+  # returned book_ids. The query_tokens passed in are already
+  # normalized (lowercased + diacritics stripped) by the search
+  # method, matching how the index stores its words.
+  def symspell_candidate_ids(query_tokens)
+    return [] unless defined?(SymSpellIndex)
+    idx = SymSpellIndex.default
+    return [] if idx.nil?
+
+    book_ids = Set.new
+    query_tokens.each do |tok|
+      idx.lookup(tok).each { |bid, _| book_ids << bid }
+    end
+    book_ids.to_a
   end
 
   def add_like(conditions, bindings, pattern)
