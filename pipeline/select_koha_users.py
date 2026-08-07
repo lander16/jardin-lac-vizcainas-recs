@@ -55,31 +55,34 @@ def main():
             
     # Scan interactions to count matched books read per user
     print("Scanning interactions to identify eligible users...")
-    user_checkouts = {}  # user_csv_id -> list of (gr_book_id, rating)
+    user_checkouts = {}  # user_csv_id -> set of real_book_id (deduplicated)
     total_interactions = 0
-    
+
     with open(interactions_file, 'r', encoding='utf-8') as f:
         reader = csv.DictReader(f)
         for row in reader:
             total_interactions += 1
             if total_interactions % 20000000 == 0:
                 print(f"  Scanned {total_interactions/1000000:.0f}M interactions...")
-                
+
             user_csv_id = row['user_id']
             book_csv_id = row['book_id']
             is_read = row.get('is_read', '0')
             rating = row.get('rating', '0')
-            
+
             # Only count books read or rated
             if is_read != '1' and rating == '0':
                 continue
-                
+
             real_book_id = book_id_map.get(book_csv_id)
             if not real_book_id or real_book_id not in matched_gr_ids:
                 continue
-                
-            user_checkouts.setdefault(user_csv_id, []).append(real_book_id)
-            
+
+            # Use a set so multiple interactions with the same book (e.g.
+            # rated + read) don't inflate the "10 matches" threshold or
+            # produce duplicate checkout rows downstream.
+            user_checkouts.setdefault(user_csv_id, set()).add(real_book_id)
+
     print(f"Total users with at least 1 match: {len(user_checkouts)}")
     
     # Filter users with at least 10 matches

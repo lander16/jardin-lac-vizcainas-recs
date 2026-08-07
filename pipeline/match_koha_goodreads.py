@@ -13,11 +13,11 @@ def main():
     koha_file = "data/koha/catalog.json"
     goodreads_books_file = "goodreads/goodreads_books.json"
     output_mapping_file = "data/koha_goodreads_mapping.json"
-    
+
     if not os.path.exists(koha_file):
         print(f"Error: {koha_file} not found. Please run fetch_koha_catalog.py first.")
         return
-        
+
     if not os.path.exists(goodreads_books_file):
         print(f"Error: {goodreads_books_file} not found.")
         return
@@ -25,47 +25,58 @@ def main():
     print("Loading Koha catalog...")
     with open(koha_file, 'r', encoding='utf-8') as f:
         koha_catalog = json.load(f)
-        
+
     print(f"Loaded {len(koha_catalog)} Koha books.")
-    
+
     # Map normalized titles to Koha books
     koha_titles = {}
+    collision_count = 0
     for book in koha_catalog:
         title = book.get('title', '').strip()
         if title:
             norm = normalize_title(title)
+            if norm in koha_titles:
+                collision_count += 1
+                # Log the collision so silent overwrites are visible.
+                print(f"  WARNING: title collision for '{norm}' — Koha biblios "
+                      f"{koha_titles[norm].get('biblio_id')} vs {book.get('biblio_id')}; "
+                      "keeping first match.")
+                continue
             koha_titles[norm] = book
-            
-    print(f"Indexed {len(koha_titles)} unique normalized Koha titles.")
-    
+
+    print(f"Indexed {len(koha_titles)} unique normalized Koha titles "
+          f"({collision_count} collisions dropped).")
+
     # Scan Goodreads books to match works and fetch descriptions
     print("Scanning Goodreads books for title matches and descriptions...")
     matched_work_ids = {}      # work_id -> Koha metadata + description
     work_id_to_gr_books = {}   # work_id -> list of GR book_ids
     total_scanned = 0
     match_count = 0
-    
+    json_errors = 0
+
     with open(goodreads_books_file, 'r', encoding='utf-8') as f:
         for line in f:
             total_scanned += 1
             if total_scanned % 500000 == 0:
                 print(f"  Scanned {total_scanned} books... found {match_count} matches so far.")
-                
+
             try:
                 gb = json.loads(line.strip())
-            except:
+            except (json.JSONDecodeError, ValueError):
+                json_errors += 1
                 continue
-                
+
             gr_title = gb.get('title', '').strip()
             gr_norm = normalize_title(gr_title)
             work_id = gb.get('work_id', '').strip()
             book_id = gb.get('book_id', '').strip()
             desc = gb.get('description', '').strip()
-            
+
             # Map work_id to all of its book_ids
             if work_id and book_id:
                 work_id_to_gr_books.setdefault(work_id, []).append(book_id)
-                
+
             # Check for title match
             if gr_norm in koha_titles and work_id:
                 if work_id not in matched_work_ids:
@@ -83,8 +94,8 @@ def main():
                     existing_desc = matched_work_ids[work_id].get('description', '')
                     if len(desc) > len(existing_desc):
                         matched_work_ids[work_id]['description'] = desc
-                    
-    print(f"\nScan completed. Scanned {total_scanned} books.")
+
+    print(f"\nScan completed. Scanned {total_scanned} books ({json_errors} bad JSON lines skipped).")
     print(f"Found {len(matched_work_ids)} matched unique works.")
     
     # Expand to all GR book_ids under those works
