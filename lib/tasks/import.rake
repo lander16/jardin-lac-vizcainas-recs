@@ -14,6 +14,7 @@ namespace :import do
     Rake::Task["import:book_connections"].invoke
     Rake::Task["import:content_similarities"].invoke
     Rake::Task["import:user_similarities"].invoke
+    Rake::Task["import:embeddings"].invoke
 
     elapsed = Time.current - start_time
     puts "All data imported successfully in #{elapsed.round(2)}s!"
