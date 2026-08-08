@@ -28,6 +28,19 @@ class CatalogSearchService
     candidates = candidate_books(query_tokens)
     return [] if candidates.empty?
 
+    # When any query token matches an existing author name, suppress
+    # the authority-tier contribution to the score. Books that merely
+    # have the query's word as an authority tag (e.g. Rexroth's "Cita
+    # con los clásicos", which lists Shakespeare among ~30 classical-
+    # author authorities) would otherwise match the search and pollute
+    # the result set. Multi-word topic queries (e.g. "mexican revolution")
+    # don't match any author name, so authority matching still works
+    # for them.
+    query_matches_author = query_tokens.any? do |tok|
+      next false if tok.length < 3
+      Book.where("LOWER(author) LIKE ?", "%#{ActiveRecord::Base.sanitize_sql_like(tok)}%").exists?
+    end
+
     # Load embeddings for the candidate shortlist in a single query
     # (BLOB column → Array<Float> via unpack).
     candidate_ids = candidates.map(&:id)
@@ -38,7 +51,7 @@ class CatalogSearchService
                            .transform_values { |bytes| bytes&.unpack("e*") }
 
     scored = candidates.filter_map do |book|
-      score_book(book, query_tokens, query_embedding, embeddings_by_id[book.id], w_semantic)
+      score_book(book, query_tokens, query_embedding, embeddings_by_id[book.id], w_semantic, suppress_authority: query_matches_author)
     end
 
     scored.sort_by! { |b| -b[:match_score] }
@@ -123,7 +136,7 @@ class CatalogSearchService
     (0..text.length - 3).map { |i| text[i, 3] }.uniq
   end
 
-  def score_book(book, query_tokens, query_embedding, book_embedding, w_semantic)
+  def score_book(book, query_tokens, query_embedding, book_embedding, w_semantic, suppress_authority: false)
     norm_title = normalize_text(book.title)
     norm_author = normalize_text(book.author || "")
     norm_authorities = book.authorities.map { |a| normalize_text(a.name) }
@@ -135,7 +148,7 @@ class CatalogSearchService
 
     weighted_title = title_score * WEIGHTS[:title]
     weighted_author = author_score * WEIGHTS[:author]
-    weighted_auth = best_auth_score * WEIGHTS[:authority]
+    weighted_auth = suppress_authority ? 0.0 : (best_auth_score * WEIGHTS[:authority])
 
     token_score = [ weighted_title, weighted_author, weighted_auth ].max
 

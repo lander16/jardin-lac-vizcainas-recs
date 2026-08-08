@@ -133,6 +133,32 @@ class CatalogSearchServiceTest < ActiveSupport::TestCase
     end
   end
 
+  test "authority-tier is suppressed when the query matches an author name" do
+    # Searching for 'shakespeare' should return only Shakespeare's own
+    # works, not a literary-criticism book that happens to list
+    # Shakespeare as one of its many authority tags. The latter would
+    # pollute the result set with 70-pt authority matches and hide
+    # the user's intent.
+    with_stubbed_class_method(QueryEmbedder, :default, fake_embedder(available: false)) do
+      shakespeare = Book.create!(id: "sh_hamlet", title: "Hamlet", author: "Shakespeare, William")
+      rexroth     = Book.create!(id: "rx_cita",   title: "Cita con los clásicos", author: "Rexroth, Kenneth")
+      # Link Shakespeare as an authority on Rexroth's book (as in the
+      # real data: a literary-criticism book that lists dozens of
+      # classical authors including Shakespeare).
+      shakespeare_authority = Authority.create!(id: "auth_shakes", name: "Shakespeare, William", authority_type: "Autor")
+      BookAuthority.create!(book: rexroth, authority: shakespeare_authority)
+
+      results = CatalogSearchService.search("shakespeare", limit: 10)
+      ids = results.map { |r| r[:biblio_id] }
+
+      assert_includes ids, "sh_hamlet", "Shakespeare's Hamlet should be in the results"
+      assert_not_includes ids, "rx_cita",
+                         "Rexroth's book has 'Shakespeare' as an authority " \
+                         "but should NOT appear in the results when the query " \
+                         "matches an actual author name"
+    end
+  end
+
   test "FTS5 fuzzy lookup returns candidates for typo'd book words" do
     # Isolates the disk-backed FTS5 candidate source (FuzzyBookLookup)
     # from the LIKE tiers in candidate_books. Exercises the same
