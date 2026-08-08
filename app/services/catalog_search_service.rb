@@ -61,59 +61,41 @@ class CatalogSearchService
   private
 
   def candidate_books(query_tokens)
-    # SQL pre-filter with three tiers per query token so typos at the
-    # SQL level still produce candidates for the Ruby Levenshtein
-    # scorer to rank:
-    #   1. Exact substring — e.g. '%pedro%' matches "Pedro".
-    #   2. First-5-chars prefix (when the token is at least 5 chars)
-    #      — catches typos at the end / transpositions toward the
-    #      middle, e.g. '%shake%' matches "Shakespeare" when the
-    #      query is "shakesrpeare" (r in the wrong place).
-    #   3. 3-character substrings (trigrams) of the query — catches
-    #      dropped first chars ("akespeare" → "shakespeare") and
-    #      short mid-word transpositions ("pedrp" → "pedro").
-    # Without these tiers, typo'd queries produce zero candidates and
-    # the Levenshtein never runs.
-    # Authority names are scored in Ruby on the shortlist (the cross-
-    # table JOIN is expensive and rarely contributes more candidates
-    # than the title/author LIKE).
+    # Two candidate sources, merged with the LIKE-exact results FIRST
+    # so the FTS5 fuzzy results only fill the remaining slots:
     #
-    # In parallel, the FTS5 trigram index (book_words_fts) is consulted
-    # to find books whose dictionary words contain all of the query
-    # token's trigrams. FTS5 handles cases the LIKE tiers miss (typos
-    # that drop the first or last character of a word, e.g.
-    # "akespeare" → "shakespeare") and LIKE covers the boundary-trigram
-    # cases FTS5 misses (e.g. "hemingwy" → "hemingway"). The index is
-    # disk-backed inside SQLite, so unlike the old in-memory SymSpell
-    # index it costs no Ruby heap space.
+    #   1. LIKE exact + prefix  (always wins when it matches)
+    #        - '%shakespeare%'  matches the 11 Shakespeare-author books
+    #        - '%shake%'        catches end-of-word typos
+    #   2. FTS5 fuzzy match  (filler, up to CANDIDATE_LIMIT)
+    #        - trigram tokenizer handles 'pedrp' -> 'pedro' and
+    #          'shakesrpeare' -> 'shakespeare' when the exact tier
+    #          doesn't find them
     #
-    # The two candidate sources are OR'd via ActiveRecord::Relation#or
-    # instead of being merged into a single SQL string. This keeps
-    # each side using Rails' built-in safe parameter binding (so the
-    # book_ids list — which comes from the DB, not user input —
-    # can't trigger a SQL injection false positive in brakeman).
+    # The order matters: if we just OR'd them with a single LIMIT,
+    # FTS5's noisy common-trigram matches (e.g. 'sha', 'ake') fill
+    # the 50-candidate cap and push the real targets out. Doing
+    # the merge in Ruby with the exact tier first guarantees the
+    # precise matches always make it into the candidate set.
     base = Book.includes(:authorities)
     conditions = []
     bindings = []
     query_tokens.each do |tok|
       add_like(conditions, bindings, tok)
-
       if tok.length >= 5
         add_like(conditions, bindings, tok[0, 5])
       end
-
-      trigrams_of(tok).each { |tri| add_like(conditions, bindings, tri) }
     end
 
-    scopes = []
-    scopes << base.where(conditions.join(" OR "), *bindings) if conditions.any?
-
+    like_ids = conditions.any? ? base.where(conditions.join(" OR "), *bindings).distinct.pluck(:id) : []
     fuzzy_ids = fuzzy_candidate_ids(query_tokens)
-    scopes << base.where(books: { id: fuzzy_ids }) if fuzzy_ids.any?
 
-    return base.none if scopes.empty?
+    # Exact + prefix matches first, then FTS5 fuzzy matches to fill.
+    # uniq preserves order; .first(CANDIDATE_LIMIT) keeps the rank.
+    merged_ids = (like_ids + fuzzy_ids).uniq.first(CANDIDATE_LIMIT)
+    return base.none if merged_ids.empty?
 
-    scopes.reduce { |acc, s| acc.or(s) }.distinct.limit(CANDIDATE_LIMIT)
+    base.where(books: { id: merged_ids })
   end
 
   # Look up each query token in the FTS5 trigram index and union the

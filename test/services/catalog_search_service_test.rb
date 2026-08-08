@@ -118,18 +118,44 @@ class CatalogSearchServiceTest < ActiveSupport::TestCase
     end
   end
 
-  test "SQL pre-filter catches mid-word transpositions via trigrams" do
-    # "pedrp" (r in the wrong place vs "pedro") is matched because the
-    # trigrams "ped" and "edr" both overlap with "pedro" (2 of 3).
+  test "FTS5 tier catches dropped-first-char and 1-insertion typos" do
+    # The previous implementation used a LIKE-trigram tier that also
+    # caught pure-transposition cases like 'pedrp' -> 'pedro'. That tier
+    # was removed (it was too broad and pushed out the real targets for
+    # common words like 'shakespeare'); the FTS5 trigram tokenizer
+    # now provides the fuzzy matching at the DB level.
+    #
+    # FTS5 trigrams require ALL query trigrams to be present in the
+    # indexed word. This catches dropped-first-char / dropped-last-char
+    # and 1-insertion typos (where the dropped/inserted char doesn't
+    # introduce a new trigram) but NOT pure-transposition typos where
+    # the chars are reordered (e.g. 'pedrp' -> 'pedro' needs the
+    # trigrams 'ped', 'edr', 'drp' all present, but 'pedro' has
+    # 'ped', 'edr', 'dro' — 'drp' is not a substring of 'pedro').
     with_stubbed_class_method(QueryEmbedder, :default, fake_embedder(available: false)) do
-      Book.create!(id: "pedro_1", title: "Pedro Páramo", author: "Rulfo, Juan")
+      hemingway = Book.create!(id: "ft_hem_1", title: "The Old Man and the Sea", author: "Hemingway, Ernest")
+      BookWord.create!(book_id: hemingway.id, word: "hemingway", source: "author")
+      BookWord.create!(book_id: hemingway.id, word: "ernest", source: "author")
+      BookWord.create!(book_id: hemingway.id, word: "old", source: "title")
+      BookWord.create!(book_id: hemingway.id, word: "man", source: "title")
+      BookWord.create!(book_id: hemingway.id, word: "sea", source: "title")
+      FuzzyBookLookup.rebuild_from_book_words!
 
-      results = CatalogSearchService.search("pedrp", limit: 10)
-      ids = results.map { |r| r[:biblio_id] }
+      # 'akespeare' is 'shakespeare' minus the leading 's'. FTS5 catches
+      # it because all of its trigrams ('aks','kse','esp','spe','pea',
+      # 'ear','are') are substrings of 'shakespeare'.
+      shakespeare = Book.create!(id: "ft_shk_1", title: "Hamlet", author: "Shakespeare, William")
+      BookWord.create!(book_id: shakespeare.id, word: "shakespeare", source: "author")
+      BookWord.create!(book_id: shakespeare.id, word: "hamlet", source: "title")
+      FuzzyBookLookup.rebuild_from_book_words!
 
-      assert_includes ids, "pedro_1",
-                      "Pedro should appear via the trigram fallback " \
-                      "even though 'pedrp' has the r in the wrong place"
+      hem_ids = CatalogSearchService.search("hemingwy", limit: 10).map { |r| r[:biblio_id] }
+      assert_includes hem_ids, "ft_hem_1",
+                       "hemingwy (1 insert) should reach hemingway via FTS5 trigram overlap"
+
+      shk_ids = CatalogSearchService.search("akespeare", limit: 10).map { |r| r[:biblio_id] }
+      assert_includes shk_ids, "ft_shk_1",
+                       "akespeare (dropped first char) should reach shakespeare via FTS5 trigram overlap"
     end
   end
 
