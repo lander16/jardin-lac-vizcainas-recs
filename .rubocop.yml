@@ -1,6 +1,15 @@
 # Omakase Ruby styling for Rails
 inherit_gem: { rubocop-rails-omakase: rubocop.yml }
 
+# Shell scripts under bin/ are not Ruby, but rubocop picks them up
+# via the default file glob and tries to parse them as Ruby (which
+# produces confusing "unexpected string literal" errors). Exclude.
+AllCops:
+  Exclude:
+    - "bin/render-build.sh"
+    - "bin/render-build.sh"
+    - "tmp/**/*"
+
 # Overwrite or add rules to create your own house style
 #
 # # Use `[a, [b, c]]` not `[ a, [ b, c ] ]`

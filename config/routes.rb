@@ -28,4 +28,8 @@ Rails.application.routes.draw do
   # Custom error pages
   match "/404", to: "errors#not_found", via: :all
   match "/500", to: "errors#internal_server_error", via: :all
+
+  # Liveness / data-presence probe. Used to diagnose "empty search"
+  # deploys on Render without needing shell access.
+  get "/healthz", to: "health#show"
 end
