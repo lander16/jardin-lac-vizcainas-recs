@@ -1,5 +1,5 @@
-# Shared word-normalization used by both the SymSpell indexer
-# (app/services/sym_spell_index.rb) and the import task that populates
+# Shared word-normalization used by both the fuzzy book lookup
+# (app/services/fuzzy_book_lookup.rb) and the import task that populates
 # book_words (lib/tasks/import_book_words.rake). Keeping it in one
 # module means the words stored in the DB always match the tokens the
 # indexer produces at query time.

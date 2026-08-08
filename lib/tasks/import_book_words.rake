@@ -49,5 +49,12 @@ namespace :import do
 
     total = title_count + author_count + authority_count
     puts "  -> #{total} book_words inserted (#{title_count} from titles, #{author_count} from authors, #{authority_count} from authorities)."
+
+    # Populate the FTS5 trigram index that replaces the in-memory
+    # SymSpellIndex at search time. Bulk parameterized INSERTs
+    # (1000-row batches) keep this fast for the ~194k book_words rows.
+    puts "Populating book_words_fts..."
+    FuzzyBookLookup.rebuild_from_book_words!
+    puts "  -> book_words_fts populated."
   end
 end

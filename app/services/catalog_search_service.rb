@@ -1,5 +1,3 @@
-require "set"
-
 class CatalogSearchService
   WEIGHTS = { title: 1.0, author: 1.1, authority: 0.7 }.freeze
   THRESHOLD = 50.0
@@ -67,12 +65,14 @@ class CatalogSearchService
     # table JOIN is expensive and rarely contributes more candidates
     # than the title/author LIKE).
     #
-    # In parallel, the SymSpell index is consulted to find books
-    # whose dictionary words are at edit distance ≤ 2 from any
-    # query token. SymSpell handles the cases the trigrams miss
-    # (e.g. 1-insertion: "hemingwy" → "hemingway") and vice versa
-    # (e.g. 3-deletion: "hemway" → "hemingway" — trigrams catch
-    # this via the "hem" prefix, SymSpell can't because distance > 2).
+    # In parallel, the FTS5 trigram index (book_words_fts) is consulted
+    # to find books whose dictionary words contain all of the query
+    # token's trigrams. FTS5 handles cases the LIKE tiers miss (typos
+    # that drop the first or last character of a word, e.g.
+    # "akespeare" → "shakespeare") and LIKE covers the boundary-trigram
+    # cases FTS5 misses (e.g. "hemingwy" → "hemingway"). The index is
+    # disk-backed inside SQLite, so unlike the old in-memory SymSpell
+    # index it costs no Ruby heap space.
     #
     # The two candidate sources are OR'd via ActiveRecord::Relation#or
     # instead of being merged into a single SQL string. This keeps
@@ -95,28 +95,20 @@ class CatalogSearchService
     scopes = []
     scopes << base.where(conditions.join(" OR "), *bindings) if conditions.any?
 
-    symspell_ids = symspell_candidate_ids(query_tokens)
-    scopes << base.where(books: { id: symspell_ids }) if symspell_ids.any?
+    fuzzy_ids = fuzzy_candidate_ids(query_tokens)
+    scopes << base.where(books: { id: fuzzy_ids }) if fuzzy_ids.any?
 
     return base.none if scopes.empty?
 
     scopes.reduce { |acc, s| acc.or(s) }.distinct.limit(CANDIDATE_LIMIT)
   end
 
-  # Look up each query token in the SymSpell index and union the
+  # Look up each query token in the FTS5 trigram index and union the
   # returned book_ids. The query_tokens passed in are already
   # normalized (lowercased + diacritics stripped) by the search
   # method, matching how the index stores its words.
-  def symspell_candidate_ids(query_tokens)
-    return [] unless defined?(SymSpellIndex)
-    idx = SymSpellIndex.default
-    return [] if idx.nil?
-
-    book_ids = Set.new
-    query_tokens.each do |tok|
-      idx.lookup(tok).each { |bid, _| book_ids << bid }
-    end
-    book_ids.to_a
+  def fuzzy_candidate_ids(query_tokens)
+    FuzzyBookLookup.candidate_ids_for_tokens(query_tokens)
   end
 
   def add_like(conditions, bindings, pattern)

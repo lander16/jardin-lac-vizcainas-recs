@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_07_202304) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_07_223000) do
   create_table "authorities", id: :string, force: :cascade do |t|
     t.string "authority_type", null: false
     t.integer "books_count", default: 0, null: false
@@ -108,4 +108,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_07_202304) do
     t.index ["patron_id"], name: "index_user_similarities_on_patron_id"
     t.index ["similar_patron_id"], name: "index_user_similarities_on_similar_patron_id"
   end
+
+  # Virtual tables defined in this database.
+  # Note that virtual tables may not work with other database engines. Be careful if changing database.
+  create_virtual_table "book_words_fts", "fts5", ["word", "book_id UNINDEXED", "tokenize = 'trigram'"]
 end

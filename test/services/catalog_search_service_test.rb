@@ -132,4 +132,32 @@ class CatalogSearchServiceTest < ActiveSupport::TestCase
                       "even though 'pedrp' has the r in the wrong place"
     end
   end
+
+  test "FTS5 fuzzy lookup returns candidates for typo'd book words" do
+    # Isolates the disk-backed FTS5 candidate source (FuzzyBookLookup)
+    # from the LIKE tiers in candidate_books. Exercises the same
+    # index-population path the import rake task runs, so this test
+    # pins the FTS5 contract that book_words_fts must stay in sync.
+    book = Book.create!(id: "fts_hem_1", title: "The Old Man and the Sea", author: "Ernest Hemingway")
+    BookWord.create!(book_id: book.id, word: "hemingway", source: "author")
+    BookWord.create!(book_id: book.id, word: "shakespeare", source: "author")
+
+    FuzzyBookLookup.rebuild_from_book_words!
+
+    # "hemingwa" is "hemingway" minus the trailing 'y' — every query
+    # trigram still appears in the indexed word, so the FTS5 trigram
+    # tokenizer surfaces the book directly.
+    assert_includes FuzzyBookLookup.candidate_ids_for_token("hemingwa"), book.id
+
+    # "akespeare" is "shakespeare" minus the leading 's' — the trigram
+    # index catches dropped-first-character typos too.
+    assert_includes FuzzyBookLookup.candidate_ids_for_token("akespeare"), book.id
+  end
+
+  test "FTS5 fuzzy lookup skips short and blank tokens" do
+    assert_empty FuzzyBookLookup.candidate_ids_for_token("")
+    assert_empty FuzzyBookLookup.candidate_ids_for_token(nil)
+    assert_empty FuzzyBookLookup.candidate_ids_for_token("ab")
+    assert_empty FuzzyBookLookup.candidate_ids_for_tokens([ nil, "x", "ab" ])
+  end
 end
