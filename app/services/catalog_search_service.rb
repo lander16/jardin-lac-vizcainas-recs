@@ -5,7 +5,11 @@ class CatalogSearchService
   THRESHOLD = 50.0
   SEMANTIC_THRESHOLD = 25.0
   DEFAULT_W_SEMANTIC = 0.35
-  CANDIDATE_LIMIT = 200
+  # Tightened from 200 -> 50 to cut memory + scoring time on Render
+  # free tier. 50 candidates is still more than enough for the
+  # Levenshtein + semantic scoring to surface the right book at
+  # the top of the top-100 results.
+  CANDIDATE_LIMIT = 50
 
   def self.search(query, limit: 100, w_semantic: DEFAULT_W_SEMANTIC)
     new.search(query, limit: limit, w_semantic: w_semantic)

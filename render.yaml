@@ -13,3 +13,14 @@ services:
         value: "true"
       - key: RAILS_LOG_TO_STDOUT
         value: "true"
+      # Render free tier is 512 MB / 0.1 CPU. With the in-memory
+      # SymSpellIndex (~300 MB) + ONNX runtime (~80 MB) + Rails
+      # baseline (~96 MB) we peak at ~515 MB per process, which
+      # OOM-kills under concurrency. Single worker + single thread
+      # keeps RSS at one copy of the heavy objects, prevents
+      # thread-contention thrashing on the 0.1 CPU, and leaves ~50 MB
+      # of headroom for transient allocations during search.
+      - key: WEB_CONCURRENCY
+        value: "1"
+      - key: RAILS_MAX_THREADS
+        value: "1"
