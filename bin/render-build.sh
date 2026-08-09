@@ -25,12 +25,6 @@ if [ -z "$BOOK_COUNT" ] || [ "$BOOK_COUNT" -lt 100 ]; then
 fi
 echo "Book count after import: $BOOK_COUNT (OK)"
 
-# Warm the in-process ONNX model so the first catalog search after
-# deploy doesn't pay the ~300 ms model-load cost. QueryEmbedder is
-# silent if data/mini_lm_onnx/ is not present.
-echo "=== Warming semantic search model ==="
-bundle exec rails runner 'q = QueryEmbedder.default; q.encode("warmup") if q.available?' 2>/dev/null || true
-
 echo "=== Precompiling Assets ==="
 bundle exec rails assets:precompile
 

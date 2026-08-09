@@ -105,12 +105,12 @@ Toda la lógica de procesamiento masivo de datos se ejecuta en Python (`pipeline
 - Construye vectores de caracterización para cada obra procesando títulos, sinopsis y descriptores catalográficos mediante el modelo **`all-MiniLM-L6-v2` de sentence-transformers** (384 dimensiones, multilingüe).
 - Calcula la **Similitud Coseno** entre todos los pares de libros:
   $$\text{SimilitudCoseno}(A, B) = \frac{A \cdot B}{\|A\| \|B\|}$$
-- Produce **24,500 pares de similitud temática** almacenados en `data/content_similarities.json`.
+- Produce **392,000 pares de similitud temática** almacenados en `data/content_similarities.json`.
 
 ### 4. Filtrado Colaborativo de Lectores (Índice de Jaccard)
 
 - **Scripts**: `pipeline/select_koha_users.py`, `pipeline/generate_recommendations.py`
-- Procesa el historial de préstamos (`data/koha_checkouts.csv`) de 300 lectores representativos (13,746 préstamos).
+- Procesa el historial de préstamos (`data/koha_checkouts.csv`) de 300 lectores representativos (6,873 filas CSV; 6,820 pares únicos lector/obra).
 - Calcula la **Similitud de Jaccard** entre el conjunto de lecturas de dos usuarios $U_1$ y $U_2$:
   $$J(U_1, U_2) = \frac{|U_1 \cap U_2|}{|U_1 \cup U_2|}$$
 - Produce **9,000 pares de afinidad de lectores** en `data/collab_recommendations.json` y `data/user_graph.json`.
@@ -233,18 +233,20 @@ Esta tarea ejecuta secuencialmente:
 
 1. `import:books`: Carga 7,840 obras bibliográficas desde `data/book_metadata.json`.
 2. `import:patrons`: Carga 300 lectores desde `data/patron_names.json`.
-3. `import:checkouts`: Registra 13,746 préstamos históricos desde `data/koha_checkouts.csv`.
+3. `import:checkouts`: Registra 6,873 filas CSV de préstamos históricos desde `data/koha_checkouts.csv` (6,820 pares únicos lector/obra).
 4. `import:authorities`: Carga 23,295 autoridades y 77,812 relaciones `BookAuthority` desde `data/koha/authority_graph.json`.
 5. `import:connections`: Carga 61,128 conexiones inter-libro por autoridades.
-6. `import:content_similarities`: Carga 24,500 pares de similitud temática.
+6. `import:content_similarities`: Carga 392,000 pares de similitud temática.
 7. `import:user_similarities`: Carga 9,000 pares de similitud entre lectores.
 8. `import:embeddings`: Carga los **7,840 vectores semánticos de 384 dimensiones** (uno por libro) generados por la pipeline de embeddings, persistidos como `BLOB` en `books.embedding`.
+
+> **Nota de privacidad:** los nombres, correos electrónicos y números de credencial de lectores incluidos en los archivos de datos son sintéticos/generados para esta aplicación; no contienen PII real de usuarios de biblioteca.
 
 ---
 
 ## 🧠 Búsqueda Semántica en Tiempo Real
 
-Además de la búsqueda por coincidencia literal (token + Levenshtein), el catálogo soporta **búsqueda semántica** que permite consultas por tema aunque el término exacto no aparezca en el título, autor o autoridad. Por ejemplo, una consulta como *"soledad existencial"* devuelve *Steppenwolf* (Hermann Hesse) porque su descripción conecta temáticamente con la búsqueda, aunque la palabra "soledad" no aparezca en el libro.
+Además de la búsqueda por coincidencia literal (token + Levenshtein), el catálogo puede usar **búsqueda semántica en runtime** cuando los embeddings importados y el modelo ONNX están disponibles. La señal semántica aumenta los resultados por tokens con cercanía temática; en implementaciones que habilitan candidatos semánticos puros, también puede recuperar obras aunque el término exacto no aparezca en el título, autor o autoridad.
 
 ### Arquitectura
 
@@ -276,14 +278,14 @@ Además de la búsqueda por coincidencia literal (token + Levenshtein), el catá
 final_score = (1 - w_semantic) · token_score + w_semantic · semantic_score
 ```
 
-donde `w_semantic = 0.35` por default (ligero sesgo hacia la coincidencia literal para que las erratas tipográficas sigan ganando). Los libros sin embedding se evalúan sólo con el score token, preservando el comportamiento legacy.
+donde `w_semantic = 0.35` por default (ligero sesgo hacia la coincidencia literal para que las erratas tipográficas sigan ganando). Los libros sin embedding se evalúan sólo con el score token, preservando el comportamiento legacy; si el servicio incluye candidatos generados sólo por similitud semántica, estos se puntúan con la señal semántica disponible.
 
 ### Despliegue en Render (Free Tier)
 
 - **Sin Python en runtime**: el modelo ONNX corre en C++ dentro de la gema `onnxruntime`, no se necesita buildpack de Python.
 - **Memoria**: ~80 MB de footprint para el modelo + runtime. Cabe holgadamente en los 512 MB del tier gratuito.
 - **Latencia**: ~300 ms en la primera búsqueda (carga del modelo), 20–40 ms por query subsecuente.
-- **`bin/render-build.sh`** pre-calienta el modelo durante el deploy para que la primera búsqueda del usuario no pague el costo de carga.
+- **`bin/render-build.sh`** prepara la base de datos, importa los datos y precompila assets. El modelo ONNX se carga en el proceso Puma en la primera búsqueda semántica; cualquier ejecución durante build ocurre en otro proceso y no calienta el runtime web.
 
 ### Regenerar el modelo
 
@@ -380,17 +382,21 @@ bin/bundler-audit check --update
 
 ### GitHub Actions (CI)
 
-Cada `push` o `pull_request` a las ramas `main` y `rails-migration` desencadena la ejecución automática de la suite de CI (`.github/workflows/ci.yml`):
+Los `push` a `main` y los `pull_request` en general desencadenan la suite de CI (`.github/workflows/ci.yml`):
 
 - Verificación de formato y linters (`RuboCop`).
 - Auditoría de seguridad de código (`Brakeman`).
 - Escaneo de vulnerabilidades en dependencias (`bundler-audit`).
 - Ejecución de pruebas automatizadas (`rails test`).
+- Smoke test de ingesta/despliegue (`db:prepare`, `import:all` y conteos mínimos de datos).
 
 ### Despliegue en Render (Tier Gratuito)
 
 El archivo `render.yaml` y el script `bin/render-build.sh` están optimizados para el plan gratuito de Render:
 
 - **Base de Datos**: Almacenada en `storage/production.sqlite3`.
+- **Disco persistente**: `render.yaml` declara un disco montado en `/opt/render/project/src/storage` para conservar SQLite entre deploys/restarts.
+- **Comando de build**: `bin/render-build.sh` ejecuta `bundle install`, `db:prepare`, `import:all`, una verificación de conteo y `assets:precompile`.
+- **Comando de arranque**: Puma (`bundle exec puma -C config/puma.rb`).
 - **Precompilación de Assets**: Invocada durante el build mediante `bundle exec rails assets:precompile`.
-- **Preparación de BD**: Invocada automáticamente en el arranque mediante `bundle exec rails db:prepare`.
+- **Preparación de BD**: Invocada durante el build mediante `bundle exec rails db:prepare` antes de la importación.

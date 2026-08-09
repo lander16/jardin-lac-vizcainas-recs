@@ -84,3 +84,43 @@ jobs:
         env:
           RAILS_ENV: test
         run: bin/rails db:test:prepare test
+
+  import_smoke:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Install packages
+        run: sudo apt-get update && sudo apt-get install --no-install-recommends -y libvips
+
+      - name: Checkout code
+        uses: actions/checkout@v4.2.2
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          bundler-cache: true
+
+      - name: Prepare database and import deploy data
+        env:
+          RAILS_ENV: test
+        run: bin/rails db:prepare import:all
+
+      - name: Smoke check imported counts
+        env:
+          RAILS_ENV: test
+        run: |
+          bin/rails runner '
+            checks = {
+              "books" => [Book.count, 100],
+              "patrons" => [Patron.count, 100],
+              "checkouts" => [Checkout.count, 1000],
+              "content_similarities" => [ContentSimilarity.count, 1000]
+            }
+
+            failures = checks.filter_map do |name, (actual, minimum)|
+              puts "#{name}: #{actual} (expected >= #{minimum})"
+              "#{name}=#{actual}" if actual < minimum
+            end
+
+            abort("Import smoke check failed: #{failures.join(", ")}") if failures.any?
+          '
