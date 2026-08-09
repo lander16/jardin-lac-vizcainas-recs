@@ -212,4 +212,65 @@ class CatalogSearchServiceTest < ActiveSupport::TestCase
     assert_empty FuzzyBookLookup.candidate_ids_for_token("ab")
     assert_empty FuzzyBookLookup.candidate_ids_for_tokens([ nil, "x", "ab" ])
   end
+
+  test "candidate set is ordered with LIKE-exact matches before FTS5-fuzzy matches" do
+    # Regression test for the 'shakespeare' bug: candidate_books used to OR
+    # the LIKE-exact tier with the FTS5 fuzzy tier and cap the combined
+    # result at CANDIDATE_LIMIT (50). FTS5's noisy common-trigram matches
+    # (books whose book_words contain "shakespeare" via an authority-name
+    # source) filled the cap and pushed the real Shakespeare books out, so
+    # the search returned 0 results. The fix queries the LIKE-exact tier
+    # first and only fills the remaining slots from FTS5, so the exact
+    # matches always keep their rank.
+    with_stubbed_class_method(QueryEmbedder, :default, fake_embedder(available: false)) do
+      # Noise books that match the FTS5 tier but NOT the LIKE-exact tier.
+      # The first five are the real authors from the debug session; each
+      # noise book gets a book_word "shakespeare" (source: authority_name)
+      # exactly like the production literary-criticism books that list
+      # Shakespeare as an authority. Their title/author never contain the
+      # literal substring "shakespeare", so they never match the LIKE tier.
+      noise_books = [
+        [ "noise_3",  "Random Title", "Duthie, Ellen" ],
+        [ "noise_34", "Something",    "Tavares, Gonçalo M" ],
+        [ "noise_35", "Other",        "Abenshushan, Vivian" ],
+        [ "noise_51", "Another",      "Calders, Pere" ],
+        [ "noise_56", "Yet Another",  "Rexroth, Kenneth" ]
+      ]
+      # Enough extra FTS5-only noise to overflow the 50-candidate cap.
+      # The "aa_" prefix sorts these ids lexicographically BEFORE
+      # "hamlet_shakespeare", and they are created BEFORE it too, so both
+      # orderings SQLite can pick for the pre-fix query
+      # (SELECT DISTINCT ... OR'd scopes ... LIMIT 50, no ORDER BY) — the
+      # DISTINCT-column sort or the rowid scan — deterministically fill the
+      # cap with noise rows and truncate the Shakespeare book out, exactly
+      # like the FTS5 noise did in production.
+      (1..50).each { |i| noise_books << [ "aa_noise_#{i}", "Noise Title #{i}", "Duthie, Ellen" ] }
+
+      noise_books.each do |id, title, author|
+        Book.create!(id: id, title: title, author: author)
+        FuzzyText.normalize_words(author).each do |word|
+          BookWord.create!(book_id: id, word: word, source: "author")
+        end
+        BookWord.create!(book_id: id, word: "shakespeare", source: "authority_name")
+      end
+
+      # The one LIKE-exact match: author contains the literal "shakespeare".
+      # Created LAST so its rowid is the highest — the pre-fix rowid-ordered
+      # scan must reach the 51st row before seeing it.
+      Book.create!(id: "hamlet_shakespeare", title: "Hamlet", author: "Shakespeare, William")
+      BookWord.create!(book_id: "hamlet_shakespeare", word: "shakespeare", source: "author")
+      BookWord.create!(book_id: "hamlet_shakespeare", word: "hamlet", source: "title")
+      BookWord.create!(book_id: "hamlet_shakespeare", word: "william", source: "author")
+
+      FuzzyBookLookup.rebuild_from_book_words!
+
+      results = CatalogSearchService.search("shakespeare", limit: 20)
+      top3 = results.first(3).map { |r| r[:biblio_id] }
+
+      assert_includes top3, "hamlet_shakespeare",
+                      "the LIKE-exact Shakespeare book must be ranked before " \
+                      "the FTS5-fuzzy noise books (the exact tier must win " \
+                      "the CANDIDATE_LIMIT ordering)"
+    end
+  end
 end
