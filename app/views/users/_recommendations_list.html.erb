@@ -1,88 +1,83 @@
 <%= turbo_frame_tag "recommendations-list" do %>
-<div style="display:flex; flex-direction:column; gap:1rem;">
-  <% if recommendations.empty? %>
-    <div style="text-align:center; padding:3rem; color:var(--text-secondary);">
-      <i class="fa-solid fa-book-open" style="font-size:2.5rem; color:var(--text-muted); margin-bottom:0.75rem; opacity:0.5;"></i>
-      <p style="font-size:1rem; font-weight:600;">No hay suficientes lecturas registradas.</p>
-      <p style="font-size:0.85rem; color:var(--text-muted);">Registra al menos un préstamo para generar recomendaciones personalizadas.</p>
-    </div>
-  <% else %>
-    <% recommendations.each do |rec| %>
-      <div class="glass-card" style="padding:1rem 1.25rem; background:var(--bg-primary); border:1px solid var(--border-light);" data-controller="accordion">
-        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:1rem; flex-wrap:wrap; margin-bottom:0.5rem;">
-          <div style="flex:1; min-width:220px;">
-            <a href="<%= book_path(rec[:book_id]) %>" style="font-family:var(--font-display); font-size:1.2rem; font-weight:700; color:var(--text-primary); text-decoration:none; display:block; margin-bottom:0.2rem;" onmouseover="this.style.color='var(--color-accent)'" onmouseout="this.style.color='var(--text-primary)'">
-              <%= rec[:title] %>
-            </a>
-            <% if rec[:author].present? %>
-              <div style="font-size:0.8rem; color:var(--text-secondary);"><i class="fa-solid fa-feather"></i> <%= rec[:author] %></div>
-            <% end %>
-          </div>
-
-          <div style="display:flex; align-items:center; gap:0.75rem;">
-            <!-- Source Badge -->
-            <% badge_class = case rec[:primary_source]
-                             when "content" then "content"
-                             when "collaborative" then "collaborative"
-                             when "authority" then "authority"
-                             else "hybrid"
-                             end %>
-            
-            <% badge_text = case rec[:primary_source]
-                            when "content" then "Contenido"
-                            when "collaborative" then "Lectores Afines"
-                            when "authority" then "Autoridades"
-                            when "all" then "Híbrido (3 Fuentes)"
-                            else "Combinado"
-                            end %>
-
-            <% badge_icon = case rec[:primary_source]
-                            when "content" then "fa-solid fa-book"
-                            when "collaborative" then "fa-solid fa-users"
-                            when "authority" then "fa-solid fa-tags"
-                            when "all" then "fa-solid fa-wand-magic-sparkles"
-                            else "fa-solid fa-layer-group"
-                            end %>
-
-            <span class="source-badge <%= badge_class %>" style="font-size:0.72rem; padding:0.2rem 0.55rem;">
-              <i class="<%= badge_icon %>"></i> <%= badge_text %>
-            </span>
-
-            <span class="similarity-badge" style="font-size:0.82rem; font-weight:700;">
-              <%= rec[:match_percentage] %>% coincidencia
-            </span>
-          </div>
-        </div>
-
-        <!-- Score Bar -->
-        <div style="margin:0.75rem 0 0.5rem 0;">
-          <div class="score-track" style="height:6px; background:#e6decb; border-radius:3px;">
-            <div class="score-fill <%= badge_class %>" style="width: <%= rec[:match_percentage] %>%; height:100%; border-radius:3px;"></div>
-          </div>
-        </div>
-
-        <!-- Explanation Accordion -->
-        <% rec_id = "explanation-#{rec[:book_id]}" %>
-        <button type="button"
-                class="explanation-btn"
-                aria-expanded="false"
-                aria-controls="<%= rec_id %>"
-                style="background:none; border:none; color:var(--color-accent); font-size:0.78rem; font-weight:600; cursor:pointer; padding:0.25rem 0; display:flex; align-items:center; gap:0.35rem;"
-                data-action="click->accordion#toggle"
-                data-accordion-target="button">
-          <i class="fa-solid fa-circle-info" aria-hidden="true"></i> ¿Por qué esta sugerencia?
-          <i class="fa-solid fa-chevron-down" data-accordion-target="icon" style="font-size:0.7rem; transition:transform 0.2s;" aria-hidden="true"></i>
-        </button>
-
-        <div id="<%= rec_id %>"
-             class="explanation-panel"
-             role="region"
-             data-accordion-target="panel"
-             style="display:none; padding:0.6rem 0.8rem; background:white; border-radius:4px; border:1px solid var(--border-light); margin-top:0.4rem; font-size:0.8rem; color:var(--text-secondary); line-height:1.45;">
-          <%= rec[:explanation] %>
-        </div>
+  <div class="recs-container">
+    <% if recommendations.empty? %>
+      <div class="empty-state-card">
+        <i class="fa-solid fa-book-open" aria-hidden="true"></i>
+        <p class="empty-state-title">No hay suficientes lecturas registradas.</p>
+        <p class="empty-state-copy">Registra al menos un préstamo para generar recomendaciones personalizadas.</p>
       </div>
+    <% else %>
+      <% recommendations.each do |rec| %>
+        <div class="glass-card rec-card" data-controller="accordion">
+          <div class="rec-header">
+            <div class="rec-title-desc">
+              <a href="<%= book_path(rec[:book_id]) %>" class="rec-title" data-turbo-frame="_top">
+                <%= rec[:title] %>
+              </a>
+              <% if rec[:author].present? %>
+                <div class="rec-author"><i class="fa-solid fa-feather" aria-hidden="true"></i> <%= rec[:author] %></div>
+              <% end %>
+            </div>
+
+            <div class="score-badge-area">
+              <% badge_class = case rec[:primary_source]
+                               when "content" then "content"
+                               when "collaborative" then "collaborative"
+                               when "authority" then "authority"
+                               else "hybrid"
+                               end %>
+
+              <% badge_text = case rec[:primary_source]
+                              when "content" then "Contenido"
+                              when "collaborative" then "Lectores Afines"
+                              when "authority" then "Autoridades"
+                              when "all" then "Híbrido"
+                              else "Combinado"
+                              end %>
+
+              <% badge_icon = case rec[:primary_source]
+                              when "content" then "fa-solid fa-book"
+                              when "collaborative" then "fa-solid fa-users"
+                              when "authority" then "fa-solid fa-tags"
+                              when "all" then "fa-solid fa-wand-magic-sparkles"
+                              else "fa-solid fa-layer-group"
+                              end %>
+
+              <span class="source-badge <%= badge_class %>">
+                <i class="<%= badge_icon %>" aria-hidden="true"></i> <%= badge_text %>
+              </span>
+
+              <span class="similarity-badge">
+                <%= rec[:match_percentage] %>% coincidencia
+              </span>
+            </div>
+          </div>
+
+          <div class="score-block">
+            <div class="score-track">
+              <div class="score-fill <%= badge_class %>" style="width: <%= rec[:match_percentage] %>%"></div>
+            </div>
+          </div>
+
+          <% rec_id = "explanation-#{rec[:book_id]}" %>
+          <button type="button"
+                  class="explanation-btn"
+                  aria-expanded="false"
+                  aria-controls="<%= rec_id %>"
+                  data-action="click->accordion#toggle"
+                  data-accordion-target="button">
+            <i class="fa-solid fa-circle-info" aria-hidden="true"></i> ¿Por qué esta sugerencia?
+            <i class="fa-solid fa-chevron-down" data-accordion-target="icon" aria-hidden="true"></i>
+          </button>
+
+          <div id="<%= rec_id %>"
+               class="explanation-panel"
+               role="region"
+               data-accordion-target="panel">
+            <%= rec[:explanation] %>
+          </div>
+        </div>
+      <% end %>
     <% end %>
-  <% end %>
-</div>
+  </div>
 <% end %>

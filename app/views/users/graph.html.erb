@@ -18,25 +18,34 @@
       </p>
     </div>
   </div>
+  <div class="graph-help-row">
+    <span class="graph-help-chip"><i class="fa-solid fa-hand-pointer" aria-hidden="true"></i> Arrastra nodos</span>
+    <span class="graph-help-chip"><i class="fa-solid fa-magnifying-glass-plus" aria-hidden="true"></i> Rueda para zoom</span>
+    <span class="graph-help-chip"><i class="fa-solid fa-circle-info" aria-hidden="true"></i> Clic para detalles</span>
+  </div>
 </div>
 
 <div class="graph-split" data-controller="d3-user-graph" data-d3-user-graph-url-value="<%= api_user_graph_path(@patron.id) %>">
   <!-- D3 Canvas Card -->
   <div class="glass-card" style="padding:0; position:relative; overflow:hidden; min-height:550px; display:flex; flex-direction:column;">
+    <div class="graph-loading-state" data-d3-user-graph-target="loading">
+      <i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>
+      <span>Cargando grafo…</span>
+    </div>
     <div id="graph-container" data-d3-user-graph-target="container" style="width:100%; height:550px; background:var(--bg-primary);"></div>
     
     <!-- Legend Footer -->
     <div class="graph-legend" style="padding:0.75rem 1.25rem; background:white; border-top:1px solid var(--border-light); display:flex; gap:1.25rem; flex-wrap:wrap; font-size:0.75rem; align-items:center;">
-      <div style="display:flex; align-items:center; gap:0.4rem;">
+      <div class="graph-legend-item">
         <span style="width:12px; height:12px; border-radius:50%; background:#f43f5e; display:inline-block;"></span> Lector Principal
       </div>
-      <div style="display:flex; align-items:center; gap:0.4rem;">
+      <div class="graph-legend-item">
         <span style="width:10px; height:10px; border-radius:50%; background:#56697a; display:inline-block;"></span> Préstamo Propio
       </div>
-      <div style="display:flex; align-items:center; gap:0.4rem;">
+      <div class="graph-legend-item">
         <span style="width:11px; height:11px; border-radius:50%; background:#52755e; display:inline-block;"></span> Lector Afin
       </div>
-      <div style="display:flex; align-items:center; gap:0.4rem;">
+      <div class="graph-legend-item">
         <span style="width:9px; height:9px; border-radius:50%; background:#b38f4d; display:inline-block;"></span> Recomendación Colaborativa
       </div>
     </div>

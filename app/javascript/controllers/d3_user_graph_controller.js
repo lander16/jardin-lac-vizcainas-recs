@@ -2,7 +2,7 @@ import { Controller } from "@hotwired/stimulus"
 import * as d3 from "d3"
 
 export default class extends Controller {
-  static targets = ["container", "panel"]
+  static targets = ["container", "panel", "loading"]
   static values = { url: String }
 
   connect() {
@@ -20,11 +20,16 @@ export default class extends Controller {
 
   async loadGraph() {
     try {
+      if (this.hasLoadingTarget) this.loadingTarget.hidden = false
       const response = await fetch(this.urlValue)
       if (!response.ok) throw new Error("Failed to load graph data")
       const data = await response.json()
       this.renderGraph(data)
     } catch (err) {
+      if (this.hasLoadingTarget) {
+        this.loadingTarget.hidden = false
+        this.loadingTarget.innerHTML = `<i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i><span>No se pudo cargar el grafo</span>`
+      }
       if (this.hasPanelTarget) {
         this.panelTarget.replaceChildren()
         const errEl = document.createElement("div")
@@ -38,6 +43,7 @@ export default class extends Controller {
   renderGraph(data) {
     const container = this.containerTarget
     container.innerHTML = ""
+    if (this.hasLoadingTarget) this.loadingTarget.hidden = true
 
     const width = container.clientWidth || 800
     const height = 550

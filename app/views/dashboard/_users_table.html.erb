@@ -1,4 +1,4 @@
-<%= turbo_frame_tag "users-table", tag: "tbody" do %>
+<%= turbo_frame_tag "users-table", tag: "tbody", data: { search_target: "frame" } do %>
   <% if users.empty? %>
     <tr>
       <td class="no-label" colspan="5" style="text-align:center;color:var(--text-secondary);padding:2rem;width:100%;">
@@ -7,7 +7,7 @@
     </tr>
   <% else %>
     <% users.each do |user| %>
-      <tr>
+      <tr data-search-result-item>
         <td>
           <a href="<%= user_path(user.id) %>" data-turbo-frame="_top" style="color:var(--text-primary); font-weight:600; text-decoration:none;">
             <%= user.name %>
@@ -19,11 +19,11 @@
           <%= user.checkouts_count %>
         </td>
         <td class="text-right">
-          <div style="display:inline-flex; gap:0.5rem;">
-            <a href="<%= user_path(user.id) %>" data-turbo-frame="_top" class="btn btn-primary" style="padding:0.35rem 0.75rem; font-size:0.8rem;">
+          <div class="table-actions">
+            <a href="<%= user_path(user.id) %>" data-turbo-frame="_top" class="btn btn-primary btn-compact">
               Recomendar
             </a>
-            <a href="<%= user_graph_path(user.id) %>" data-turbo-frame="_top" class="btn btn-secondary" style="padding:0.35rem 0.75rem; font-size:0.8rem;">
+            <a href="<%= user_graph_path(user.id) %>" data-turbo-frame="_top" class="btn btn-secondary btn-compact">
               Grafo
             </a>
           </div>

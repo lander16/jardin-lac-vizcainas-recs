@@ -42,20 +42,31 @@
 </div>
 
 <div class="dashboard-grid">
-  <div class="glass-card">
+  <div class="glass-card" data-controller="search" data-search-url-value="<%= users_search_path %>">
     <div class="section-title">
       <i class="fa-solid fa-address-book" style="color:var(--color-accent)"></i>
       <h2>Directorio de Lectores</h2>
     </div>
     
-    <div class="search-container" data-controller="search" data-search-url-value="<%= users_search_path %>">
+    <div class="search-container">
       <i class="fa-solid fa-magnifying-glass search-icon"></i>
       <label for="dashboard-user-search" class="sr-only">Buscar lectores por nombre, correo o credencial</label>
       <input type="text" 
-             id="dashboard-user-search"
-             class="search-input" 
-             placeholder="Buscar lectores por nombre, correo o número de credencial..."
-             data-action="input->search#input">
+              id="dashboard-user-search"
+              class="search-input" 
+              placeholder="Buscar lectores por nombre, correo o número de credencial..."
+              data-search-target="input"
+              data-action="input->search#input">
+      <button type="button"
+              class="search-clear-btn"
+              data-search-target="clear"
+              data-action="click->search#clear"
+              hidden>
+        Limpiar
+      </button>
+    </div>
+    <div class="search-feedback-row">
+      <p class="search-status" data-search-target="status" aria-live="polite">Mostrando <%= @users.size %> lectores</p>
     </div>
 
     <div class="directory-scroll-container">
