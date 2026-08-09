@@ -5,17 +5,7 @@ class RecommendationService
   end
 
   def recommend(w_content: nil, w_collab: nil, w_auth: nil, alpha: nil, limit: 30)
-    # Parse weights
-    if w_content.nil? && w_collab.nil? && w_auth.nil?
-      a = alpha ? alpha.to_f.clamp(0.0, 1.0) : 0.33
-      w_content = a
-      w_collab = (1.0 - a).round(4)
-      w_auth = 0.0
-    else
-      w_content = (w_content || 0.33).to_f
-      w_collab = (w_collab || 0.33).to_f
-      w_auth = (w_auth || 0.34).to_f
-    end
+    w_content, w_collab, w_auth = normalize_weights(w_content, w_collab, w_auth, alpha)
 
     return [] if @checked_book_ids.empty?
 
@@ -80,6 +70,7 @@ class RecommendationService
     end
 
     scored_candidates.sort_by! { |c| -c[:score] }
+    scored_candidates = diversify_by_author(scored_candidates, limit)
     top_candidates = scored_candidates.first(limit)
 
     # Hydrate book details (preload authorities to avoid N+1 on book.authorities.count
@@ -110,6 +101,33 @@ class RecommendationService
   end
 
   private
+
+  DEFAULT_WEIGHTS = [ 0.33, 0.33, 0.34 ].freeze
+
+  def normalize_weights(w_content, w_collab, w_auth, alpha)
+    weights = if w_content.nil? && w_collab.nil? && w_auth.nil?
+      if alpha.nil?
+        DEFAULT_WEIGHTS
+      else
+        a = numeric_weight(alpha).clamp(0.0, 1.0)
+        [ a, 1.0 - a, 0.0 ]
+      end
+    else
+      [ w_content, w_collab, w_auth ].map { |weight| numeric_weight(weight).clamp(0.0, 1.0) }
+    end
+
+    total = weights.sum
+    weights = DEFAULT_WEIGHTS if total.zero?
+    total = weights.sum
+
+    weights.map { |weight| weight / total }
+  end
+
+  def numeric_weight(value)
+    Float(value || 0)
+  rescue ArgumentError, TypeError
+    0.0
+  end
 
   def compute_content_scores
     scores = Hash.new(0.0)
@@ -175,7 +193,12 @@ class RecommendationService
     reasons = []
 
     if item[:raw_scores][:content] > 0
-      reasons << "Presenta similitud temática con lecturas anteriores en tu historial."
+      closest_book = closest_read_book_for(book.id)
+      if closest_book
+        reasons << "Presenta similitud temática con una lectura anterior: #{closest_book.title}."
+      else
+        reasons << "Presenta similitud temática con lecturas anteriores en tu historial."
+      end
     end
 
     if item[:raw_scores][:collaborative] > 0
@@ -183,10 +206,51 @@ class RecommendationService
     end
 
     if item[:raw_scores][:authority] > 0
-      auth_count = book.authorities.count
-      reasons << "Comparte #{auth_count} descriptores y autoridades catalográficas con tu acervo."
+      shared_names = shared_authority_names(book)
+      if shared_names.any?
+        reasons << "Comparte autoridades catalográficas con tus lecturas: #{shared_names.join(', ')}."
+      else
+        reasons << "Tiene descriptores y autoridades catalográficas relacionados con tu acervo."
+      end
     end
 
     reasons.join(" ")
+  end
+
+  def closest_read_book_for(candidate_book_id)
+    sim = ContentSimilarity.where(book_id: @checked_book_ids, similar_book_id: candidate_book_id)
+                           .order(similarity: :desc)
+                           .first
+    Book.find_by(id: sim&.book_id)
+  end
+
+  def shared_authority_names(book)
+    patron_authority_ids = BookAuthority.where(book_id: @checked_book_ids).distinct.pluck(:authority_id)
+    return [] if patron_authority_ids.empty?
+
+    book.authorities.where(id: patron_authority_ids).limit(3).pluck(:name)
+  end
+
+  def diversify_by_author(scored_candidates, limit)
+    candidate_ids = scored_candidates.first(limit * 3).map { |candidate| candidate[:book_id] }
+    authors_by_id = Book.where(id: candidate_ids).pluck(:id, :author).to_h
+    remaining = scored_candidates.dup
+    selected = []
+    author_counts = Hash.new(0)
+
+    until remaining.empty? || selected.length >= limit
+      best = remaining.max_by do |candidate|
+        author = authors_by_id[candidate[:book_id]].presence
+        penalty = author ? (author_counts[author] * 0.03) : 0.0
+        candidate[:score] - penalty
+      end
+
+      remaining.delete(best)
+      selected << best
+      author = authors_by_id[best[:book_id]].presence
+      author_counts[author] += 1 if author
+    end
+
+    selected + remaining
   end
 end
