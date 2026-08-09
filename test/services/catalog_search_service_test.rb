@@ -205,6 +205,31 @@ class CatalogSearchServiceTest < ActiveSupport::TestCase
     end
   end
 
+  test "bounded vocabulary fallback catches pure transposition typo" do
+    with_stubbed_class_method(QueryEmbedder, :default, fake_embedder(available: false)) do
+      BookWord.create!(book_id: @book_rulfo.id, word: "rulfo", source: "author")
+      BookWord.create!(book_id: @book_rulfo.id, word: "juan", source: "author")
+      FuzzyBookLookup.rebuild_from_book_words!
+
+      results = CatalogSearchService.search("rulsfo", limit: 10, debug: true)
+      rulfo = results.find { |r| r[:biblio_id] == @book_rulfo.id }
+
+      assert_not_nil rulfo, "rulsfo should find Juan Rulfo via bounded transposition fallback"
+      assert_includes rulfo[:candidate_sources], "bounded_transposition"
+      assert rulfo[:score_components].present?, "debug results should include score components"
+    end
+  end
+
+  test "normal search results do not include diagnostics" do
+    with_stubbed_class_method(QueryEmbedder, :default, fake_embedder(available: false)) do
+      results = CatalogSearchService.search("Hesse")
+
+      assert_not_empty results
+      assert_not results.first.key?(:candidate_sources)
+      assert_not results.first.key?(:score_components)
+    end
+  end
+
   test "authority-tier is suppressed when the query matches an author name" do
     # Searching for 'shakespeare' should return only Shakespeare's own
     # works, not a literary-criticism book that happens to list

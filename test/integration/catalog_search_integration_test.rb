@@ -190,4 +190,15 @@ class CatalogSearchIntegrationTest < ActionDispatch::IntegrationTest
                       "akespeare should reach Shakespeare via FTS5 trigram overlap"
     end
   end
+
+  test "bounded vocabulary fallback catches transposition typo (rulsfo)" do
+    with_stubbed_class_method(QueryEmbedder, :default, fake_embedder(available: false)) do
+      results = CatalogSearchService.search("rulsfo", limit: 5)
+      ids     = results.map { |r| r[:biblio_id] }
+
+      assert results.size > 0, "rulsfo (transposition typo) must return at least one result"
+      assert_includes ids, "rul_1",
+                      "rulsfo should reach Rulfo via bounded BookWord vocabulary fallback"
+    end
+  end
 end

@@ -73,14 +73,14 @@ class SmokeSearchTest < ActiveSupport::TestCase
                  "#{results.first&.dig(:author).inspect}"
   end
 
-  test "rulsfo (transposition) — known FTS5 limitation" do
+  test "rulsfo (transposition) finds Rulfo" do
     skip_unless_data
 
     results = token_only_search("rulsfo", limit: 5)
 
-    # Documented limitation, not a regression: pure transpositions
-    # (chars reordered) introduce boundary trigrams that FTS5's
-    # all-trigrams-present matcher can't bridge, so this may return 0.
-    puts "rulsfo: #{results.size} results"
+    assert_operator results.size, :>, 0, "search('rulsfo') returned 0 results"
+    assert_equal "Rulfo, Juan", results.first[:author],
+                 "top result for 'rulsfo' should be Rulfo, got: " \
+                 "#{results.first&.dig(:author).inspect}"
   end
 end

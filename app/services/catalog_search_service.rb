@@ -10,11 +10,11 @@ class CatalogSearchService
   CANDIDATE_LIMIT = 50
   SEARCH_RESULT_LIMIT = 500
 
-  def self.search(query, limit: 100, w_semantic: DEFAULT_W_SEMANTIC)
-    new.search(query, limit: limit, w_semantic: w_semantic)
+  def self.search(query, limit: 100, w_semantic: DEFAULT_W_SEMANTIC, debug: false)
+    new.search(query, limit: limit, w_semantic: w_semantic, debug: debug)
   end
 
-  def search(query, limit: 100, w_semantic: DEFAULT_W_SEMANTIC)
+  def search(query, limit: 100, w_semantic: DEFAULT_W_SEMANTIC, debug: false)
     return [] if query.blank?
 
     normalized_query = normalize_text(query)
@@ -28,7 +28,8 @@ class CatalogSearchService
 
     requested_limit = limit.to_i.clamp(1, SEARCH_RESULT_LIMIT)
 
-    candidate_ids = candidate_books(query_tokens, limit: requested_limit).pluck(:id)
+    candidate_sources = Hash.new { |h, k| h[k] = [] }
+    candidate_ids = candidate_books(query_tokens, limit: requested_limit, candidate_sources: candidate_sources).pluck(:id)
 
     # When any query token matches an existing author name, suppress
     # the authority-tier contribution to the score. Books that merely
@@ -65,7 +66,9 @@ class CatalogSearchService
                      .where(id: candidate_ids)
 
     scored = candidates.filter_map do |book|
-      score_book(book, query_tokens, query_embedding, embeddings_by_id[book.id], w_semantic, suppress_authority: query_matches_author)
+      score_book(book, query_tokens, query_embedding, embeddings_by_id[book.id], w_semantic,
+                 suppress_authority: query_matches_author, debug: debug,
+                 candidate_sources: candidate_sources[book.id])
     end
 
     scored.sort_by! { |b| -b[:match_score] }
@@ -74,7 +77,7 @@ class CatalogSearchService
 
   private
 
-  def candidate_books(query_tokens, limit: CANDIDATE_LIMIT)
+  def candidate_books(query_tokens, limit: CANDIDATE_LIMIT, candidate_sources: nil)
     # Two candidate sources, merged with the LIKE-exact results FIRST
     # so the FTS5 fuzzy results only fill the remaining slots:
     #
@@ -103,11 +106,19 @@ class CatalogSearchService
 
     like_ids = conditions.any? ? base.where(conditions.join(" OR "), *bindings).distinct.pluck(:id) : []
     fuzzy_ids = fuzzy_candidate_ids(query_tokens)
+    transposition_ids = transposition_candidate_ids(query_tokens)
 
-    # Exact + prefix matches first, then FTS5 fuzzy matches to fill.
+    if candidate_sources
+      like_ids.each { |id| candidate_sources[id] << "like_exact_prefix" }
+      fuzzy_ids.each { |id| candidate_sources[id] << "fts_trigram" }
+      transposition_ids.each { |id| candidate_sources[id] << "bounded_transposition" }
+    end
+
+    # Exact + prefix matches first, then FTS5 fuzzy, then the bounded
+    # BookWord vocabulary fallback for transposition typos.
     # uniq preserves order; .first(CANDIDATE_LIMIT) keeps the rank.
     candidate_limit = [ CANDIDATE_LIMIT, limit.to_i ].max.clamp(1, SEARCH_RESULT_LIMIT)
-    merged_ids = (like_ids + fuzzy_ids).uniq.first(candidate_limit)
+    merged_ids = (like_ids + fuzzy_ids + transposition_ids).uniq.first(candidate_limit)
     return base.none if merged_ids.empty?
 
     base.where(books: { id: merged_ids })
@@ -119,6 +130,10 @@ class CatalogSearchService
   # method, matching how the index stores its words.
   def fuzzy_candidate_ids(query_tokens)
     FuzzyBookLookup.candidate_ids_for_tokens(query_tokens)
+  end
+
+  def transposition_candidate_ids(query_tokens)
+    FuzzyBookLookup.transposition_candidate_ids_for_tokens(query_tokens)
   end
 
   def semantic_candidate_ids(query_embedding, limit:, embeddings_by_id: {})
@@ -151,7 +166,7 @@ class CatalogSearchService
     (0..text.length - 3).map { |i| text[i, 3] }.uniq
   end
 
-  def score_book(book, query_tokens, query_embedding, book_embedding, w_semantic, suppress_authority: false)
+  def score_book(book, query_tokens, query_embedding, book_embedding, w_semantic, suppress_authority: false, debug: false, candidate_sources: [])
     norm_title = normalize_text(book.title)
     norm_author = normalize_text(book.author || "")
     norm_authorities = book.authorities.map { |a| normalize_text(a.name) }
@@ -192,7 +207,7 @@ class CatalogSearchService
       semantic_cosine
     )
 
-    {
+    result = {
       biblio_id: book.id,
       title: book.title,
       author: book.author,
@@ -203,6 +218,20 @@ class CatalogSearchService
       match_explanation: explanation,
       semantic_score: semantic_cosine&.round(3)
     }
+
+    if debug
+      result[:candidate_sources] = candidate_sources.uniq
+      result[:score_components] = {
+        title: weighted_title.round(1),
+        author: weighted_author.round(1),
+        authority: weighted_auth.round(1),
+        token: token_score.round(1),
+        semantic: semantic_score.round(1),
+        final: final.round(1)
+      }
+    end
+
+    result
   end
 
   def build_explanation(book, query_tokens, wt, wa, wauth, semantic_cosine)
@@ -249,7 +278,7 @@ class CatalogSearchService
           score = 100.0 - ((qt.length - tt.length) * 5)
           best_t_score = [ best_t_score, [ score, 60.0 ].max ].max
         elsif qt.length >= 4 && tt.length >= 4
-          dist = levenshtein_distance(qt, tt)
+          dist = damerau_levenshtein_distance(qt, tt)
           max_len = [ qt.length, tt.length ].max.to_f
           similarity_ratio = 1.0 - (dist.to_f / max_len)
           if dist <= 2 || similarity_ratio >= 0.7
@@ -280,6 +309,31 @@ class CatalogSearchService
           d[i][j - 1] + 1,
           d[i - 1][j - 1] + cost
         ].min
+      end
+    end
+
+    d[s1.size][s2.size]
+  end
+
+  def damerau_levenshtein_distance(str1, str2)
+    s1 = str1.chars
+    s2 = str2.chars
+    d = Array.new(s1.size + 1) { Array.new(s2.size + 1, 0) }
+
+    (0..s1.size).each { |i| d[i][0] = i }
+    (0..s2.size).each { |j| d[0][j] = j }
+
+    (1..s1.size).each do |i|
+      (1..s2.size).each do |j|
+        cost = (s1[i - 1] == s2[j - 1]) ? 0 : 1
+        d[i][j] = [
+          d[i - 1][j] + 1,
+          d[i][j - 1] + 1,
+          d[i - 1][j - 1] + cost
+        ].min
+        if i > 1 && j > 1 && s1[i - 1] == s2[j - 2] && s1[i - 2] == s2[j - 1]
+          d[i][j] = [ d[i][j], d[i - 2][j - 2] + 1 ].min
+        end
       end
     end
 

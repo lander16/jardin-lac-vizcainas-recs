@@ -27,6 +27,9 @@ require "set"
 class FuzzyBookLookup
   MAX_RESULTS_PER_TOKEN = 500
   MIN_TOKEN_LENGTH = 3
+  MIN_TRANSPOSITION_TOKEN_LENGTH = 4
+  MAX_TRANSPOSITION_WORDS_PER_TOKEN = 500
+  MAX_TRANSPOSITION_IDS_PER_TOKEN = 100
   INSERT_BATCH_SIZE = 1000
 
   MATCH_SQL = "SELECT book_id FROM book_words_fts WHERE book_words_fts MATCH ? LIMIT #{MAX_RESULTS_PER_TOKEN}"
@@ -41,6 +44,37 @@ class FuzzyBookLookup
         candidate_ids_for_token(token).each { |book_id| book_ids << book_id }
       end
       book_ids.to_a
+    end
+
+    # Bounded vocabulary fallback for pure/near transposition typos that
+    # FTS5 trigram MATCH cannot bridge (e.g. "rulsfo" -> "rulfo"). It
+    # intentionally runs after exact/prefix and FTS candidates in the
+    # catalog service, with strict prefilters to avoid reintroducing broad
+    # noisy caps for common terms.
+    def transposition_candidate_ids_for_tokens(query_tokens)
+      book_ids = Set.new
+      (query_tokens || []).each do |token|
+        transposition_candidate_ids_for_token(token).each { |book_id| book_ids << book_id }
+      end
+      book_ids.to_a
+    end
+
+    def transposition_candidate_ids_for_token(token)
+      token = escape_fts_query(token)
+      return [] if token.length < MIN_TRANSPOSITION_TOKEN_LENGTH
+
+      words = candidate_words_for_transposition(token)
+      matching_words = words.select do |word|
+        (word.length - token.length).abs <= 2 && bounded_damerau_levenshtein(token, word, 2) <= 2
+      end
+      return [] if matching_words.empty?
+
+      BookWord.where(word: matching_words)
+              .distinct
+              .limit(MAX_TRANSPOSITION_IDS_PER_TOKEN)
+              .pluck(:book_id)
+    rescue ActiveRecord::StatementInvalid
+      []
     end
 
     # Look up a single (already normalized) token in the FTS5 trigram
@@ -61,6 +95,54 @@ class FuzzyBookLookup
     # from the strip; it only matters for direct callers.
     def escape_fts_query(token)
       token.to_s.gsub(/["*():\s]/, " ").strip
+    end
+
+    def candidate_words_for_transposition(token)
+      first_char = ActiveRecord::Base.sanitize_sql_like(token[0])
+      scope = BookWord.select(:word).distinct
+                      .where("word LIKE ?", "#{first_char}%")
+                      .where("LENGTH(word) BETWEEN ? AND ?", token.length - 2, token.length + 2)
+
+      trigrams = trigrams_of(token)
+      if trigrams.any?
+        trigram_conditions = trigrams.map { "word LIKE ?" }.join(" OR ")
+        trigram_binds = trigrams.map { |tri| "%#{ActiveRecord::Base.sanitize_sql_like(tri)}%" }
+        scope = scope.where(trigram_conditions, *trigram_binds)
+      end
+
+      scope.limit(MAX_TRANSPOSITION_WORDS_PER_TOKEN).pluck(:word)
+    end
+
+    def trigrams_of(text)
+      return [] if text.length < 3
+
+      (0..text.length - 3).map { |i| text[i, 3] }.uniq
+    end
+
+    def bounded_damerau_levenshtein(str1, str2, max_distance)
+      return max_distance + 1 if (str1.length - str2.length).abs > max_distance
+
+      s1 = str1.chars
+      s2 = str2.chars
+      d = Array.new(s1.size + 1) { Array.new(s2.size + 1, 0) }
+
+      (0..s1.size).each { |i| d[i][0] = i }
+      (0..s2.size).each { |j| d[0][j] = j }
+
+      (1..s1.size).each do |i|
+        row_min = max_distance + 1
+        (1..s2.size).each do |j|
+          cost = (s1[i - 1] == s2[j - 1]) ? 0 : 1
+          d[i][j] = [ d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + cost ].min
+          if i > 1 && j > 1 && s1[i - 1] == s2[j - 2] && s1[i - 2] == s2[j - 1]
+            d[i][j] = [ d[i][j], d[i - 2][j - 2] + 1 ].min
+          end
+          row_min = [ row_min, d[i][j] ].min
+        end
+        return max_distance + 1 if row_min > max_distance
+      end
+
+      d[s1.size][s2.size]
     end
 
     # Truncate and repopulate book_words_fts from the book_words table.
