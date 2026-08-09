@@ -181,6 +181,9 @@ Donde:
 - $\hat{S}_{\text{collab}}(B)$: Puntuación colaborativa obtenida de los hábitos de lectores afines (distancia Jaccard).
 - $\hat{S}_{\text{auth}}(B)$: Similitud estructural por autoridades compartidas (autores y materias comunes).
 - Los pesos $w_{\text{content}}, w_{\text{collab}}, w_{\text{auth}}$ se pueden ajustar dinámicamente mediante los deslizadores interactivos en la vista del lector.
+- Los pesos también se validan en servidor: se acotan a `0..1`, se normalizan para sumar 1 y vuelven a valores seguros si una URL directa envía parámetros inválidos.
+- Las explicaciones nombran señales reales cuando están disponibles: la lectura previa más cercana por contenido y las autoridades compartidas concretas con el historial del lector.
+- La lista aplica una reordenación ligera por diversidad para reducir la repetición de autores cuando varias recomendaciones tienen puntuaciones similares.
 
 ---
 
@@ -217,6 +220,9 @@ La interfaz cumple estrictos criterios de accesibilidad (WCAG AA) y estándares 
 - **Etiquetas Accesibles**: Etiquetas `.sr-only` y atributos `aria-label` en todas las barras de búsqueda y controles deslizantes.
 - **Hit Targets Móviles**: Botones y elementos interactivos con altura mínima de `44px` en pantallas móviles.
 - **Zoom Preventivo**: Tamaño de fuente de `16px` en campos de texto móviles para evitar auto-zoom desorientador en iOS Safari.
+- **Búsqueda con feedback inmediato**: Las búsquedas de catálogo y directorio muestran estado, conteo de resultados, botón de limpiar y estados vacíos con sugerencias.
+- **Tarjetas de recomendación jerárquicas**: Título, autor, fuente, porcentaje y explicación se organizan para que la señal principal sea legible de un vistazo.
+- **Grafos con onboarding**: Las vistas D3 incluyen pistas de interacción, estado de carga y leyendas en una franja inferior para no tapar nodos.
 
 ---
 
@@ -246,7 +252,14 @@ Esta tarea ejecuta secuencialmente:
 
 ## 🧠 Búsqueda Semántica en Tiempo Real
 
-Además de la búsqueda por coincidencia literal (token + Levenshtein), el catálogo puede usar **búsqueda semántica en runtime** cuando los embeddings importados y el modelo ONNX están disponibles. La señal semántica aumenta los resultados por tokens con cercanía temática; en implementaciones que habilitan candidatos semánticos puros, también puede recuperar obras aunque el término exacto no aparezca en el título, autor o autoridad.
+Además de la búsqueda por coincidencia literal (token + Levenshtein), el catálogo puede usar **búsqueda semántica en runtime** cuando los embeddings importados y el modelo ONNX están disponibles. La señal semántica aumenta los resultados por tokens con cercanía temática y también puede recuperar candidatos puramente semánticos aunque el término exacto no aparezca en el título, autor o autoridad.
+
+La búsqueda tokenizada combina varias capas de resiliencia:
+
+- Coincidencia exacta y por prefijo en título/autor, priorizada para que los aciertos obvios ganen.
+- FTS5 con tokenizer trigram para errores de inserción, omisión y coincidencias parciales.
+- Fallback acotado sobre `book_words` con distancia Damerau-Levenshtein para transposiciones como `rulsfo` → Rulfo.
+- Diagnósticos opcionales en entorno de desarrollo/pruebas (`debug: true`) para inspeccionar fuente de candidato y componentes de puntuación sin cambiar la UI normal.
 
 ### Arquitectura
 
@@ -278,7 +291,7 @@ Además de la búsqueda por coincidencia literal (token + Levenshtein), el catá
 final_score = (1 - w_semantic) · token_score + w_semantic · semantic_score
 ```
 
-donde `w_semantic = 0.35` por default (ligero sesgo hacia la coincidencia literal para que las erratas tipográficas sigan ganando). Los libros sin embedding se evalúan sólo con el score token, preservando el comportamiento legacy; si el servicio incluye candidatos generados sólo por similitud semántica, estos se puntúan con la señal semántica disponible.
+donde `w_semantic = 0.35` por default (ligero sesgo hacia la coincidencia literal para que las erratas tipográficas sigan ganando). Los libros sin embedding se evalúan sólo con el score token, preservando el comportamiento legacy; los candidatos generados sólo por similitud semántica se puntúan con la señal semántica disponible.
 
 ### Despliegue en Render (Free Tier)
 
