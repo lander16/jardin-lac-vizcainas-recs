@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_07_223000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_09_000000) do
   create_table "authorities", id: :string, force: :cascade do |t|
     t.string "authority_type", null: false
     t.integer "books_count", default: 0, null: false
@@ -74,7 +74,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_07_223000) do
     t.boolean "simulated", default: false, null: false
     t.datetime "updated_at", null: false
     t.index ["book_id"], name: "index_checkouts_on_book_id"
-    t.index ["patron_id", "book_id"], name: "index_checkouts_on_patron_id_and_book_id", unique: true
+    t.index ["patron_id", "book_id"], name: "index_checkouts_on_patron_id_and_book_id"
     t.index ["patron_id"], name: "index_checkouts_on_patron_id"
   end
 
@@ -108,6 +108,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_07_223000) do
     t.index ["patron_id"], name: "index_user_similarities_on_patron_id"
     t.index ["similar_patron_id"], name: "index_user_similarities_on_similar_patron_id"
   end
+
+  add_foreign_key "book_authorities", "authorities"
+  add_foreign_key "book_authorities", "books"
+  add_foreign_key "book_connections", "books", column: "source_book_id"
+  add_foreign_key "book_connections", "books", column: "target_book_id"
+  add_foreign_key "book_words", "books"
+  add_foreign_key "checkouts", "books"
+  add_foreign_key "checkouts", "patrons"
+  add_foreign_key "content_similarities", "books"
+  add_foreign_key "content_similarities", "books", column: "similar_book_id"
+  add_foreign_key "user_similarities", "patrons"
+  add_foreign_key "user_similarities", "patrons", column: "similar_patron_id"
 
   # Virtual tables defined in this database.
   # Note that virtual tables may not work with other database engines. Be careful if changing database.

@@ -1,5 +1,6 @@
 require "json"
 require "csv"
+require "set"
 
 namespace :import do
   desc "Import all data from JSON/CSV files into SQLite"
@@ -102,17 +103,28 @@ namespace :import do
 
   desc "Import checkouts from koha_checkouts.csv"
   task checkouts: :environment do
-    file_path = Rails.root.join("data", "koha_checkouts.csv")
+    file_path = ENV.fetch("CHECKOUTS_CSV_PATH", Rails.root.join("data", "koha_checkouts.csv"))
     next unless File.exist?(file_path)
 
     puts "Importing checkouts..."
     now = Time.current
     records = []
+    skipped = 0
+    valid_patron_ids = Set.new(Patron.pluck(:id))
+    valid_book_ids = Set.new(Book.pluck(:id))
 
     CSV.foreach(file_path, headers: true) do |row|
+      patron_id = row["user_id"].to_s
+      book_id = row["book_id"].to_s
+
+      unless valid_patron_ids.include?(patron_id) && valid_book_ids.include?(book_id)
+        skipped += 1
+        next
+      end
+
       records << {
-        patron_id: row["user_id"],
-        book_id: row["book_id"],
+        patron_id: patron_id,
+        book_id: book_id,
         checkout_date: row["checkout_date"] ? Time.zone.parse(row["checkout_date"]) : now,
         simulated: false,
         created_at: now,
@@ -120,8 +132,10 @@ namespace :import do
       }
     end
 
+    Checkout.where(simulated: false).delete_all
+
     records.each_slice(1000) do |slice|
-      Checkout.insert_all(slice, unique_by: [ :patron_id, :book_id ])
+      Checkout.insert_all(slice)
     end
 
     # Single SQL statement to update counter cache for all patrons at once
@@ -134,6 +148,7 @@ namespace :import do
     SQL
 
     puts "  -> #{Checkout.count} checkouts imported."
+    puts "  -> #{skipped} checkout rows skipped (missing patron/book)." if skipped.positive?
   end
 
   desc "Import authorities and book_authorities from Koha catalog.json"
