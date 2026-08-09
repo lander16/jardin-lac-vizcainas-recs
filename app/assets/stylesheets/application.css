@@ -939,6 +939,10 @@ input[type=range]::-webkit-slider-thumb:hover {
   backdrop-filter: blur(1px);
 }
 
+.graph-loading-state[hidden] {
+  display: none !important;
+}
+
 .graph-loading-state i {
   color: var(--color-accent);
 }
