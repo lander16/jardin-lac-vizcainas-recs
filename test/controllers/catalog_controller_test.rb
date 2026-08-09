@@ -23,6 +23,17 @@ class CatalogControllerTest < ActionDispatch::IntegrationTest
     assert_select "h1", text: /Catálogo del Acervo/
   end
 
+  test "catalog index popular books counts outgoing-only connections" do
+    connected = Book.create!(id: "cat_2", title: "El Llano en llamas", author: "Juan Rulfo")
+    BookConnection.create!(source_book: @book, target_book: connected, weight: 1)
+
+    get catalog_url
+
+    assert_response :success
+    assert_match @book.title, response.body
+    assert_match(/1\s+con\./, response.body)
+  end
+
   test "should not show the semantic pill when the ONNX model is unavailable" do
     with_stubbed_class_method(QueryEmbedder, :default, fake_embedder(available: false)) do
       get catalog_url

@@ -13,11 +13,12 @@ class CatalogController < ApplicationController
 
     @type_counts = Authority.group(:authority_type).order("COUNT(id) DESC").count
 
-    @popular_books = Book.joins(:incoming_connections)
+    connection_counts_sql = "SELECT source_book_id AS book_id FROM book_connections UNION ALL SELECT target_book_id AS book_id FROM book_connections"
+    @popular_books = Book.joins("INNER JOIN (#{connection_counts_sql}) connection_books ON connection_books.book_id = books.id")
                          .group("books.id")
-                         .order("COUNT(book_connections.id) DESC")
+                         .order("COUNT(connection_books.book_id) DESC")
                          .limit(5)
-                         .select("books.id, books.title, books.author, COUNT(book_connections.id) AS connections_count")
+                         .select("books.id, books.title, books.author, COUNT(connection_books.book_id) AS connections_count")
 
     @books = Book.includes(:authorities).limit(20)
   end
@@ -29,13 +30,16 @@ class CatalogController < ApplicationController
     @books = if query.present?
                CatalogSearchService.search(query, limit: limit)
     else
-               Book.includes(:authorities).limit(limit).map do |b|
+               books = Book.includes(:authorities).limit(limit).to_a
+               connection_counts = connection_counts_for(books.map(&:id))
+
+               books.map do |b|
                  {
                    biblio_id: b.id,
                    title: b.title,
                    author: b.author,
                    authority_count: b.authorities.size,
-                   connection_count: b.outgoing_connections.size + b.incoming_connections.size,
+                   connection_count: connection_counts[b.id] || 0,
                    authorities: b.authorities.map { |a| { authority_id: a.id, name: a.name, type: a.authority_type } }
                  }
                end
@@ -71,6 +75,15 @@ class CatalogController < ApplicationController
   end
 
   private
+
+  def connection_counts_for(book_ids)
+    ids = Array(book_ids).compact
+    return {} if ids.empty?
+
+    outgoing = BookConnection.where(source_book_id: ids).group(:source_book_id).count
+    incoming = BookConnection.where(target_book_id: ids).group(:target_book_id).count
+    outgoing.merge(incoming) { |_id, out_count, in_count| out_count + in_count }
+  end
 
   def compute_type_stats(auth_type)
     authorities = Authority.by_type(auth_type)
