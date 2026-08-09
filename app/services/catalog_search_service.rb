@@ -8,6 +8,7 @@ class CatalogSearchService
   # Levenshtein + semantic scoring to surface the right book at
   # the top of the top-100 results.
   CANDIDATE_LIMIT = 50
+  SEARCH_RESULT_LIMIT = 500
 
   def self.search(query, limit: 100, w_semantic: DEFAULT_W_SEMANTIC)
     new.search(query, limit: limit, w_semantic: w_semantic)
@@ -25,8 +26,9 @@ class CatalogSearchService
     embedder = QueryEmbedder.default
     query_embedding = embedder.available? ? embedder.encode(query) : nil
 
-    candidates = candidate_books(query_tokens)
-    return [] if candidates.empty?
+    requested_limit = limit.to_i.clamp(1, SEARCH_RESULT_LIMIT)
+
+    candidate_ids = candidate_books(query_tokens, limit: requested_limit).pluck(:id)
 
     # When any query token matches an existing author name, suppress
     # the authority-tier contribution to the score. Books that merely
@@ -41,26 +43,38 @@ class CatalogSearchService
       Book.where("LOWER(author) LIKE ?", "%#{ActiveRecord::Base.sanitize_sql_like(tok)}%").exists?
     end
 
-    # Load embeddings for the candidate shortlist in a single query
-    # (BLOB column → Array<Float> via unpack).
-    candidate_ids = candidates.map(&:id)
-    embeddings_by_id = Book.where(id: candidate_ids)
-                           .where.not(embedding: nil)
-                           .pluck(:id, :embedding)
-                           .to_h
-                           .transform_values { |bytes| bytes&.unpack("e*") }
+    # Load embeddings by id first. When a query vector exists, scan the
+    # bounded embedding corpus (about 7,840 books in production) without
+    # hydrating full Book records so semantic-only searches can contribute
+    # candidates even when literal/FTS matching finds nothing.
+    embeddings_by_id = {}
+    if query_embedding
+      semantic_ids = semantic_candidate_ids(query_embedding, limit: requested_limit, embeddings_by_id: embeddings_by_id)
+      candidate_ids = (candidate_ids + semantic_ids).uniq.first(SEARCH_RESULT_LIMIT)
+    else
+      embeddings_by_id = Book.where(id: candidate_ids)
+                             .where.not(embedding: nil)
+                             .pluck(:id, :embedding)
+                             .to_h
+                             .transform_values { |bytes| bytes&.unpack("e*") }
+    end
+
+    return [] if candidate_ids.empty?
+
+    candidates = Book.includes(:authorities, :outgoing_connections, :incoming_connections)
+                     .where(id: candidate_ids)
 
     scored = candidates.filter_map do |book|
       score_book(book, query_tokens, query_embedding, embeddings_by_id[book.id], w_semantic, suppress_authority: query_matches_author)
     end
 
     scored.sort_by! { |b| -b[:match_score] }
-    scored.first(limit)
+    scored.first(requested_limit)
   end
 
   private
 
-  def candidate_books(query_tokens)
+  def candidate_books(query_tokens, limit: CANDIDATE_LIMIT)
     # Two candidate sources, merged with the LIKE-exact results FIRST
     # so the FTS5 fuzzy results only fill the remaining slots:
     #
@@ -92,7 +106,8 @@ class CatalogSearchService
 
     # Exact + prefix matches first, then FTS5 fuzzy matches to fill.
     # uniq preserves order; .first(CANDIDATE_LIMIT) keeps the rank.
-    merged_ids = (like_ids + fuzzy_ids).uniq.first(CANDIDATE_LIMIT)
+    candidate_limit = [ CANDIDATE_LIMIT, limit.to_i ].max.clamp(1, SEARCH_RESULT_LIMIT)
+    merged_ids = (like_ids + fuzzy_ids).uniq.first(candidate_limit)
     return base.none if merged_ids.empty?
 
     base.where(books: { id: merged_ids })
@@ -104,6 +119,24 @@ class CatalogSearchService
   # method, matching how the index stores its words.
   def fuzzy_candidate_ids(query_tokens)
     FuzzyBookLookup.candidate_ids_for_tokens(query_tokens)
+  end
+
+  def semantic_candidate_ids(query_embedding, limit:, embeddings_by_id: {})
+    semantic_limit = [ CANDIDATE_LIMIT, limit.to_i ].max.clamp(1, SEARCH_RESULT_LIMIT)
+
+    scored = Book.where.not(embedding: nil).pluck(:id, :embedding).filter_map do |id, bytes|
+      vector = bytes&.unpack("e*")
+      next if vector.blank?
+
+      embeddings_by_id[id] = vector
+      cosine = cosine_similarity(query_embedding, vector)
+      next if cosine <= 0.0
+
+      [ id, cosine ]
+    end
+
+    scored.sort_by! { |(_, cosine)| -cosine }
+    scored.first(semantic_limit).map(&:first)
   end
 
   def add_like(conditions, bindings, pattern)

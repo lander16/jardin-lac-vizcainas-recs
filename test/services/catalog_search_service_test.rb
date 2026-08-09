@@ -65,6 +65,52 @@ class CatalogSearchServiceTest < ActiveSupport::TestCase
     end
   end
 
+  test "semantic-only query returns embedding match without token overlap" do
+    query_vec = Array.new(QueryEmbedder::DIMENSION, 0.0).tap { |v| v[0] = 1.0 }
+    with_stubbed_class_method(QueryEmbedder, :default, fake_embedder(available: true, vector: query_vec)) do
+      @book_hesse1.update!(embedding: query_vec.pack("e*"), embedding_model: "test")
+      @book_hesse2.update!(embedding: Array.new(QueryEmbedder::DIMENSION, 0.0).tap { |v| v[1] = 1.0 }.pack("e*"), embedding_model: "test")
+
+      results = CatalogSearchService.search("astronomy orchids", limit: 10)
+      ids = results.map { |r| r[:biblio_id] }
+
+      assert_includes ids, "b10"
+      assert_equal 1.0, results.find { |r| r[:biblio_id] == "b10" }[:semantic_score]
+    end
+  end
+
+  test "QueryEmbedder encode returns nil when model load fails" do
+    embedder = QueryEmbedder.new
+    embedder.define_singleton_method(:available?) { true }
+    embedder.define_singleton_method(:ensure_loaded!) { raise StandardError, "boom" }
+
+    assert_nil embedder.encode("Hesse")
+  end
+
+  test "search does not fail when available embedder encode returns nil" do
+    failing = Object.new
+    failing.define_singleton_method(:available?) { true }
+    failing.define_singleton_method(:encode) { |_t| nil }
+
+    with_stubbed_class_method(QueryEmbedder, :default, failing) do
+      results = CatalogSearchService.search("Hesse")
+      assert_not_empty results
+      assert results.all? { |r| r[:semantic_score].nil? }
+    end
+  end
+
+  test "requested limit above default can return more than fifty exact matches" do
+    with_stubbed_class_method(QueryEmbedder, :default, fake_embedder(available: false)) do
+      (1..60).each do |i|
+        Book.create!(id: "exact_limit_#{i}", title: "Shared Exact Term #{i}", author: "Limit Tester")
+      end
+
+      results = CatalogSearchService.search("Shared Exact", limit: 100)
+
+      assert_operator results.size, :>, 50
+    end
+  end
+
   test "search keeps pure token score when book has no embedding" do
     query_vec = Array.new(QueryEmbedder::DIMENSION, 0.0).tap { |v| v[0] = 1.0 }
     with_stubbed_class_method(QueryEmbedder, :default, fake_embedder(available: true, vector: query_vec)) do

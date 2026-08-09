@@ -47,11 +47,15 @@ class QueryEmbedder
     return nil unless available?
     return nil if text.blank?
 
-    ensure_loaded!
+    begin
+      ensure_loaded!
 
-    input_ids, attention_mask = tokenize(text)
-    outputs = run_model(input_ids, attention_mask)
-    vector = mean_pool(outputs, attention_mask)
+      input_ids, attention_mask = tokenize(text)
+      outputs = run_model(input_ids, attention_mask)
+      vector = mean_pool(outputs, attention_mask)
+    rescue StandardError
+      return nil
+    end
 
     # L2-normalise so cosine == dot product.
     norm = Math.sqrt(vector.sum { |v| v * v })
