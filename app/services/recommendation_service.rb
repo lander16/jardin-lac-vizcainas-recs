@@ -73,17 +73,19 @@ class RecommendationService
     scored_candidates = diversify_by_author(scored_candidates, limit)
     top_candidates = scored_candidates.first(limit)
 
-    # Hydrate book details (preload authorities to avoid N+1 on book.authorities.count
-    # in build_explanation below).
+    # Hydrate book details (preload authorities and batch-load closest read books
+    # to avoid N+1 queries in build_explanation below).
+    candidate_book_ids = top_candidates.map { |c| c[:book_id] }
     books_by_id = Book.includes(:authorities)
-                      .where(id: top_candidates.map { |c| c[:book_id] })
+                      .where(id: candidate_book_ids)
                       .index_by(&:id)
+    closest_read_books = batch_closest_read_books(candidate_book_ids)
 
     top_candidates.map do |item|
       b = books_by_id[item[:book_id]]
       next unless b
 
-      explanation = build_explanation(item, b)
+      explanation = build_explanation(item, b, closest_books: closest_read_books)
 
       {
         book_id: b.id,
@@ -189,11 +191,11 @@ class RecommendationService
     scores
   end
 
-  def build_explanation(item, book)
+  def build_explanation(item, book, closest_books: nil)
     reasons = []
 
     if item[:raw_scores][:content] > 0
-      closest_book = closest_read_book_for(book.id)
+      closest_book = closest_books ? closest_books[book.id.to_s] : closest_read_book_for(book.id)
       if closest_book
         reasons << "Presenta similitud temática con una lectura anterior: #{closest_book.title}."
       else
@@ -217,18 +219,34 @@ class RecommendationService
     reasons.join(" ")
   end
 
+  def batch_closest_read_books(candidate_ids)
+    return {} if candidate_ids.empty? || @checked_book_ids.empty?
+
+    best_sim_by_candidate = {}
+    ContentSimilarity.where(book_id: @checked_book_ids, similar_book_id: candidate_ids)
+                     .order(similarity: :desc)
+                     .each do |sim|
+      best_sim_by_candidate[sim.similar_book_id.to_s] ||= sim
+    end
+
+    read_book_ids = best_sim_by_candidate.values.map(&:book_id).uniq
+    read_books_by_id = Book.where(id: read_book_ids).index_by { |b| b.id.to_s }
+
+    best_sim_by_candidate.transform_values { |sim| read_books_by_id[sim.book_id.to_s] }
+  end
+
   def closest_read_book_for(candidate_book_id)
-    sim = ContentSimilarity.where(book_id: @checked_book_ids, similar_book_id: candidate_book_id)
-                           .order(similarity: :desc)
-                           .first
-    Book.find_by(id: sim&.book_id)
+    batch_closest_read_books([ candidate_book_id ])[candidate_book_id.to_s]
+  end
+
+  def patron_authority_ids
+    @patron_authority_ids ||= BookAuthority.where(book_id: @checked_book_ids).distinct.pluck(:authority_id).to_set
   end
 
   def shared_authority_names(book)
-    patron_authority_ids = BookAuthority.where(book_id: @checked_book_ids).distinct.pluck(:authority_id)
     return [] if patron_authority_ids.empty?
 
-    book.authorities.where(id: patron_authority_ids).limit(3).pluck(:name)
+    book.authorities.select { |a| patron_authority_ids.include?(a.id) }.first(3).map(&:name)
   end
 
   def diversify_by_author(scored_candidates, limit)

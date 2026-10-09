@@ -26,16 +26,18 @@ namespace :import do
     now = Time.current
 
     File.open(bin_path, "rb") do |io|
-      book_ids.each_with_index do |bid, idx|
-        next unless valid_book_ids.include?(bid)
+      ActiveRecord::Base.transaction do
+        book_ids.each_with_index do |bid, idx|
+          next unless valid_book_ids.include?(bid)
 
-        io.seek(idx * row_bytes)
-        bytes = io.read(row_bytes)
-        Book.where(id: bid).update_all(
-          embedding: bytes,
-          embedding_model: model,
-          updated_at: now,
-        )
+          io.seek(idx * row_bytes)
+          bytes = io.read(row_bytes)
+          Book.where(id: bid).update_all(
+            embedding: bytes,
+            embedding_model: model,
+            updated_at: now
+          )
+        end
       end
     end
 

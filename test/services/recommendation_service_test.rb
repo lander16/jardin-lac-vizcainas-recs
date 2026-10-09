@@ -67,4 +67,33 @@ class RecommendationServiceTest < ActiveSupport::TestCase
 
     assert_equal [ "Author Three", "Author Five", "Author Three" ], recs.map { |rec| rec[:author] }
   end
+
+  test "recommend does not execute N+1 queries when building explanations for multiple candidates" do
+    shared = Authority.create!(id: "a_n1", name: "Ciencia", authority_type: "subject")
+    BookAuthority.create!(book: @book1, authority: shared)
+
+    5.times do |i|
+      cand = Book.create!(id: "cand_n1_#{i}", title: "Cand #{i}", author: "Author #{i}")
+      ContentSimilarity.create!(book: @book1, similar_book: cand, similarity: 0.8 + (i * 0.01))
+      BookAuthority.create!(book: cand, authority: shared)
+      BookConnection.create!(source_book: @book1, target_book: cand, weight: 2)
+    end
+
+    queries = []
+    callback = ->(_name, _start, _finish, _id, payload) {
+      queries << payload[:sql] unless payload[:name] == "SCHEMA" || payload[:sql] =~ /PRAGMA|sqlite_/i
+    }
+
+    recs = nil
+    ActiveSupport::Notifications.subscribed(callback, "sql.active_record") do
+      recs = RecommendationService.new(@patron).recommend(w_content: 0.5, w_collab: 0.0, w_auth: 0.5, limit: 5)
+    end
+
+    assert_equal 5, recs.size
+    assert_operator queries.size, :<=, 12
+    recs.each do |rec|
+      assert_includes rec[:explanation], "Book One"
+      assert_includes rec[:explanation], "Ciencia"
+    end
+  end
 end

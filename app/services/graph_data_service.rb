@@ -50,7 +50,7 @@ class GraphDataService
                                  .limit(limit)
 
     similar_patron_ids = similar_rels.pluck(:similar_patron_id)
-    similar_patrons = Patron.where(id: similar_patron_ids).index_by(&:id)
+    similar_patrons = Patron.includes(:books).where(id: similar_patron_ids).index_by(&:id)
 
     similar_rels.each do |rel|
       sp = similar_patrons[rel.similar_patron_id]
@@ -76,7 +76,7 @@ class GraphDataService
       }
 
       # Books read by similar patron (collab books)
-      sp.books.limit(3).each do |cb|
+      sp.books.first(3).each do |cb|
         next if patron_books.include?(cb)
 
         book_node_id = "collab_book_#{cb.id}"

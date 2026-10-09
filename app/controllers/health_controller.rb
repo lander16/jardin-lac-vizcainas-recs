@@ -15,9 +15,9 @@ class HealthController < ApplicationController
       embeddings: Book.where.not(embedding: nil).count,
       rails_env: Rails.env,
       ruby: RUBY_DESCRIPTION,
-      git_sha: ENV["GIT_REV"] || `git rev-parse --short HEAD 2>/dev/null`.strip
+      git_sha: CURRENT_GIT_SHA
     }
-  rescue => e
+  rescue StandardError => e
     render json: { status: "error", error: e.class.name, message: e.message }, status: 500
   end
 end

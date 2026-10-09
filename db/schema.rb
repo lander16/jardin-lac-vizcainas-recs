@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_09_000000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_09_152426) do
   create_table "authorities", id: :string, force: :cascade do |t|
     t.string "authority_type", null: false
     t.integer "books_count", default: 0, null: false
@@ -96,6 +96,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_09_000000) do
     t.string "email"
     t.string "name", null: false
     t.datetime "updated_at", null: false
+    t.index ["cardnumber"], name: "index_patrons_on_cardnumber"
+    t.index ["email"], name: "index_patrons_on_email"
+    t.index ["name"], name: "index_patrons_on_name"
   end
 
   create_table "user_similarities", force: :cascade do |t|
