@@ -1,7 +1,7 @@
 source "https://rubygems.org"
 
 # Bundle edge Rails instead: gem "rails", github: "rails/rails", branch: "main"
-gem "rails", "~> 8.1.3"
+gem "rails", "~> 8.1.4"
 # The modern asset pipeline for Rails [https://github.com/rails/propshaft]
 gem "propshaft"
 # Use sqlite3 as the database for Active Record
@@ -41,7 +41,7 @@ gem "image_processing", "~> 1.2"
 # In-app semantic search (reads the ONNX model produced by
 # pipeline/export_onnx.py and tokenises queries the same way the
 # offline pipeline does, so the two halves are wire-compatible).
-gem "onnxruntime", "~> 0.11.5"
+gem "onnxruntime", "~> 0.11.7"
 gem "tokenizers",  "~> 0.7.0"
 
 group :development, :test do
