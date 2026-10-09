@@ -1,3 +1,4 @@
+<% recommendations = RecommendationPresenter.wrap(recommendations) %>
 <%= turbo_frame_tag "recommendations-list" do %>
   <div class="recs-container">
     <% if recommendations.empty? %>
@@ -11,70 +12,46 @@
         <div class="glass-card rec-card" data-controller="accordion">
           <div class="rec-header">
             <div class="rec-title-desc">
-              <a href="<%= book_path(rec[:book_id]) %>" class="rec-title" data-turbo-frame="_top">
-                <%= rec[:title] %>
+              <a href="<%= book_path(rec.book_id) %>" class="rec-title" data-turbo-frame="_top">
+                <%= rec.title %>
               </a>
-              <% if rec[:author].present? %>
-                <div class="rec-author"><i class="fa-solid fa-feather" aria-hidden="true"></i> <%= rec[:author] %></div>
+              <% if rec.author.present? %>
+                <div class="rec-author"><i class="fa-solid fa-feather" aria-hidden="true"></i> <%= rec.author %></div>
               <% end %>
             </div>
 
             <div class="score-badge-area">
-              <% badge_class = case rec[:primary_source]
-                               when "content" then "content"
-                               when "collaborative" then "collaborative"
-                               when "authority" then "authority"
-                               else "hybrid"
-                               end %>
-
-              <% badge_text = case rec[:primary_source]
-                              when "content" then "Contenido"
-                              when "collaborative" then "Lectores Afines"
-                              when "authority" then "Autoridades"
-                              when "all" then "Híbrido"
-                              else "Combinado"
-                              end %>
-
-              <% badge_icon = case rec[:primary_source]
-                              when "content" then "fa-solid fa-book"
-                              when "collaborative" then "fa-solid fa-users"
-                              when "authority" then "fa-solid fa-tags"
-                              when "all" then "fa-solid fa-wand-magic-sparkles"
-                              else "fa-solid fa-layer-group"
-                              end %>
-
-              <span class="source-badge <%= badge_class %>">
-                <i class="<%= badge_icon %>" aria-hidden="true"></i> <%= badge_text %>
+              <span class="source-badge <%= rec.badge_class %>">
+                <i class="<%= rec.badge_icon %>" aria-hidden="true"></i> <%= rec.badge_text %>
               </span>
 
               <span class="similarity-badge">
-                <%= rec[:match_percentage] %>% coincidencia
+                <%= rec.match_percentage %>% coincidencia
               </span>
             </div>
           </div>
 
           <div class="score-block">
             <div class="score-track">
-              <div class="score-fill <%= badge_class %>" style="width: <%= rec[:match_percentage] %>%"></div>
+              <div class="score-fill <%= rec.badge_class %>" style="width: <%= rec.match_percentage %>%"></div>
             </div>
           </div>
 
-          <% rec_id = "explanation-#{rec[:book_id]}" %>
           <button type="button"
                   class="explanation-btn"
                   aria-expanded="false"
-                  aria-controls="<%= rec_id %>"
+                  aria-controls="<%= rec.accordion_id %>"
                   data-action="click->accordion#toggle"
                   data-accordion-target="button">
             <i class="fa-solid fa-circle-info" aria-hidden="true"></i> ¿Por qué esta sugerencia?
             <i class="fa-solid fa-chevron-down" data-accordion-target="icon" aria-hidden="true"></i>
           </button>
 
-          <div id="<%= rec_id %>"
+          <div id="<%= rec.accordion_id %>"
                class="explanation-panel"
                role="region"
                data-accordion-target="panel">
-            <%= rec[:explanation] %>
+            <%= rec.explanation %>
           </div>
         </div>
       <% end %>

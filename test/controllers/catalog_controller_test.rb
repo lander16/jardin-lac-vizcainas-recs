@@ -70,4 +70,28 @@ class CatalogControllerTest < ActionDispatch::IntegrationTest
       assert_match(/Coincidencia semántica/, response.body)
     end
   end
+
+  test "catalog index wraps books as CatalogBookPresenter" do
+    get catalog_url
+    assert_response :success
+    books = @controller.instance_variable_get(:@books)
+    assert books.present?
+    assert books.all? { |b| b.is_a?(CatalogBookPresenter) }
+  end
+
+  test "search wraps books as CatalogBookPresenter when query is empty" do
+    get catalog_search_url
+    assert_response :success
+    books = @controller.instance_variable_get(:@books)
+    assert books.present?
+    assert books.all? { |b| b.is_a?(CatalogBookPresenter) }
+  end
+
+  test "search wraps books as CatalogBookPresenter when query is present" do
+    get catalog_search_url, params: { q: "Pedro" }
+    assert_response :success
+    books = @controller.instance_variable_get(:@books)
+    assert books.present?
+    assert books.all? { |b| b.is_a?(CatalogBookPresenter) }
+  end
 end

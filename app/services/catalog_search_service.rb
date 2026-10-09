@@ -162,8 +162,7 @@ class CatalogSearchService
   end
 
   def trigrams_of(text)
-    return [] if text.length < 3
-    (0..text.length - 3).map { |i| text[i, 3] }.uniq
+    FuzzyText.trigrams_of(text)
   end
 
   def score_book(book, query_tokens, query_embedding, book_embedding, w_semantic, suppress_authority: false, debug: false, candidate_sources: [])
@@ -294,50 +293,11 @@ class CatalogSearchService
   end
 
   def levenshtein_distance(str1, str2)
-    s1 = str1.chars
-    s2 = str2.chars
-    d = Array.new(s1.size + 1) { Array.new(s2.size + 1, 0) }
-
-    (0..s1.size).each { |i| d[i][0] = i }
-    (0..s2.size).each { |j| d[0][j] = j }
-
-    (1..s1.size).each do |i|
-      (1..s2.size).each do |j|
-        cost = (s1[i - 1] == s2[j - 1]) ? 0 : 1
-        d[i][j] = [
-          d[i - 1][j] + 1,
-          d[i][j - 1] + 1,
-          d[i - 1][j - 1] + cost
-        ].min
-      end
-    end
-
-    d[s1.size][s2.size]
+    FuzzyText.levenshtein_distance(str1, str2)
   end
 
   def damerau_levenshtein_distance(str1, str2)
-    s1 = str1.chars
-    s2 = str2.chars
-    d = Array.new(s1.size + 1) { Array.new(s2.size + 1, 0) }
-
-    (0..s1.size).each { |i| d[i][0] = i }
-    (0..s2.size).each { |j| d[0][j] = j }
-
-    (1..s1.size).each do |i|
-      (1..s2.size).each do |j|
-        cost = (s1[i - 1] == s2[j - 1]) ? 0 : 1
-        d[i][j] = [
-          d[i - 1][j] + 1,
-          d[i][j - 1] + 1,
-          d[i - 1][j - 1] + cost
-        ].min
-        if i > 1 && j > 1 && s1[i - 1] == s2[j - 2] && s1[i - 2] == s2[j - 1]
-          d[i][j] = [ d[i][j], d[i - 2][j - 2] + 1 ].min
-        end
-      end
-    end
-
-    d[s1.size][s2.size]
+    FuzzyText.damerau_levenshtein_distance(str1, str2)
   end
 
   def cosine_similarity(a, b)

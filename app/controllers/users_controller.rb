@@ -7,10 +7,12 @@ class UsersController < ApplicationController
     @w_collab = (params[:w_collab] || 0.33).to_f
     @w_auth = (params[:w_auth] || 0.34).to_f
 
-    @recommendations = RecommendationService.new(@patron).recommend(
-      w_content: @w_content,
-      w_collab: @w_collab,
-      w_auth: @w_auth
+    @recommendations = RecommendationPresenter.wrap(
+      RecommendationService.new(@patron).recommend(
+        w_content: @w_content,
+        w_collab: @w_collab,
+        w_auth: @w_auth
+      )
     )
   end
 
@@ -24,10 +26,12 @@ class UsersController < ApplicationController
     w_collab  = (params[:w_collab]  || 0.33).to_f
     w_auth    = (params[:w_auth]    || 0.34).to_f
 
-    @recommendations = RecommendationService.new(@patron).recommend(
-      w_content: w_content,
-      w_collab: w_collab,
-      w_auth: w_auth
+    @recommendations = RecommendationPresenter.wrap(
+      RecommendationService.new(@patron).recommend(
+        w_content: w_content,
+        w_collab: w_collab,
+        w_auth: w_auth
+      )
     )
 
     render partial: "users/recommendations_list", locals: { recommendations: @recommendations }

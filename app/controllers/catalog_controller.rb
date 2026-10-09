@@ -21,6 +21,8 @@ class CatalogController < ApplicationController
                          .select("books.id, books.title, books.author, COUNT(connection_books.book_id) AS connections_count")
 
     @books = Book.includes(:authorities).limit(20)
+    connection_counts = connection_counts_for(@books.map(&:id))
+    @books = CatalogBookPresenter.wrap(@books, connection_counts: connection_counts)
   end
 
   def search
@@ -44,6 +46,8 @@ class CatalogController < ApplicationController
                  }
                end
     end
+
+    @books = CatalogBookPresenter.wrap(@books)
 
     render partial: "catalog/search_results", locals: { books: @books, query: query }
   end
