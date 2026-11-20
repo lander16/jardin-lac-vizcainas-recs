@@ -150,11 +150,11 @@ GEM
       racc (~> 1.4)
     nokogiri (1.19.7-x86_64-linux-gnu)
       racc (~> 1.4)
-    onnxruntime (0.11.8-aarch64-linux)
+    onnxruntime (0.11.9-aarch64-linux)
       ffi
-    onnxruntime (0.11.8-arm64-darwin)
+    onnxruntime (0.11.9-arm64-darwin)
       ffi
-    onnxruntime (0.11.8-x86_64-linux)
+    onnxruntime (0.11.9-x86_64-linux)
       ffi
     parallel (2.1.0)
     parser (3.3.12.0)
@@ -297,7 +297,7 @@ DEPENDENCIES
   csv
   debug
   importmap-rails
-  onnxruntime (~> 0.11.7)
+  onnxruntime (~> 0.11.9)
   propshaft
   puma (>= 5.0)
   rails (~> 8.1.4)
