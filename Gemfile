@@ -29,7 +29,7 @@ gem "bootsnap", require: false
 # In-app semantic search (reads the ONNX model produced by
 # pipeline/export_onnx.py and tokenises queries the same way the
 # offline pipeline does, so the two halves are wire-compatible).
-gem "onnxruntime", "~> 0.11.7"
+gem "onnxruntime", "~> 0.11.9"
 gem "tokenizers",  "~> 0.7.0"
 
 group :development, :test do
