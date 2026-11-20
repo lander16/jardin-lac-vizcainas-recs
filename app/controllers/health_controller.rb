@@ -1,9 +1,8 @@
 # frozen_string_literal: true
 
-# Tiny probe endpoint used to diagnose "empty search" deploys on
-# Render (or any ephemeral-storage host) without needing shell access.
-# Hits the DB so a misconfigured import shows up as a low book count.
-class HealthController < ApplicationController
+require "sqlite3"
+
+class HealthController < ActionController::Base
   def show
     render json: {
       status: "ok",
@@ -14,10 +13,10 @@ class HealthController < ApplicationController
                                .first["c"],
       embeddings: Book.where.not(embedding: nil).count,
       rails_env: Rails.env,
-      ruby: RUBY_DESCRIPTION,
       git_sha: CURRENT_GIT_SHA
     }
-  rescue StandardError => e
-    render json: { status: "error", error: e.class.name, message: e.message }, status: 500
+  rescue ActiveRecord::ActiveRecordError, SQLite3::Exception => e
+    Rails.logger.error("Health check failed: #{e.class}: #{e.message}")
+    render json: { status: "error" }, status: :internal_server_error
   end
 end

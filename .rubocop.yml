@@ -7,7 +7,6 @@ inherit_gem: { rubocop-rails-omakase: rubocop.yml }
 AllCops:
   Exclude:
     - "bin/render-build.sh"
-    - "bin/render-build.sh"
     - "tmp/**/*"
 
 # Overwrite or add rules to create your own house style

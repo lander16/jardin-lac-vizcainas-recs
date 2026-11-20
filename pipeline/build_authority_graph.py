@@ -1,138 +1,100 @@
 """
-Build the authority-based book connection graph from the Koha catalog data.
+Build the authority-based book connection graph from the Koha catalog data
+using Adamic-Adar / IDF weighting to suppress mega-hub umbrella distortion.
 
 Reads:  data/koha/catalog.json
 Writes: data/koha/authority_graph.json
 """
 
+import collections
 import json
+import math
 import os
-from collections import defaultdict
+import sys
 
-INPUT_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "koha", "catalog.json")
-OUTPUT_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "koha", "authority_graph.json")
+try:
+    from .config import AUTHORITY_GRAPH_PATH, CATALOG_PATH, write_json_atomic
+except ImportError:
+    from config import AUTHORITY_GRAPH_PATH, CATALOG_PATH, write_json_atomic
+
+MAX_DF_FOR_EDGES = 400
+MAX_SINGLE_AUTHORITY_DF = 20
+TOP_CONNECTIONS_PER_BOOK = 30
 
 
-def main():
-    print("=" * 60)
-    print("Authority Graph Builder — Jardín LAC Vizcaínas")
-    print("=" * 60)
-
-    # Step 1: Load catalog
-    print("\n[1/4] Loading catalog data...")
-    with open(INPUT_PATH, "r", encoding="utf-8") as f:
-        catalog = json.load(f)
-    print(f"  ✓ Loaded {len(catalog)} books.")
-
-    # Step 2: Build authority index
-    # authority_id → { name, type, biblio_ids: set }
-    print("\n[2/4] Building authority index...")
+def compute_authority_connections(
+    catalog,
+    *,
+    max_df=MAX_DF_FOR_EDGES,
+    max_single_df=MAX_SINGLE_AUTHORITY_DF,
+    top_k_per_book=TOP_CONNECTIONS_PER_BOOK,
+):
     authority_index = {}
-    book_authorities = {}  # biblio_id → set of authority_ids
-
     for book in catalog:
-        bid = book["biblio_id"]
-        book_authorities[bid] = set()
-
-        for auth in book["authorities"]:
-            aid = auth["authority_id"]
-            book_authorities[bid].add(aid)
-
+        bid = str(book["biblio_id"])
+        for auth in book.get("authorities") or []:
+            name = (auth.get("name") or "").strip()
+            if not name:
+                continue
+            aid = str(auth["authority_id"])
             if aid not in authority_index:
                 authority_index[aid] = {
                     "authority_id": aid,
-                    "name": auth["name"],
-                    "type": auth["type"],
+                    "name": name,
+                    "type": auth.get("type", ""),
                     "biblio_ids": set(),
                 }
             authority_index[aid]["biblio_ids"].add(bid)
 
-    # Filter out authorities that only link to a single book (no connections)
-    multi_link_auths = {aid: auth for aid, auth in authority_index.items() if len(auth["biblio_ids"]) >= 2}
+    multi_link_auths = {aid: a for aid, a in authority_index.items() if len(a["biblio_ids"]) >= 2}
 
-    print(f"  ✓ Found {len(authority_index)} unique authorities.")
-    print(f"  ✓ {len(multi_link_auths)} authorities link ≥2 books (useful for connections).")
-
-    # Authority type breakdown
-    type_counts = defaultdict(int)
-    for auth in authority_index.values():
-        type_counts[auth["type"]] += 1
-    for t, c in sorted(type_counts.items(), key=lambda x: -x[1]):
-        print(f"      {t}: {c}")
-
-    # Step 3: Compute book-to-book connections
-    print("\n[3/4] Computing book-to-book connections via shared authorities...")
-    connections = defaultdict(lambda: {"weight": 0, "shared_authority_ids": []})
+    pair_scores = collections.defaultdict(float)
+    pair_shared_counts = collections.defaultdict(int)
+    pair_min_df = {}
 
     for aid, auth in multi_link_auths.items():
+        df = len(auth["biblio_ids"])
+        if df > max_df:
+            continue
+        idf_weight = 1.0 / math.log2(1.0 + df)
         bids = sorted(auth["biblio_ids"])
         for i in range(len(bids)):
+            b1 = bids[i]
             for j in range(i + 1, len(bids)):
-                key = (bids[i], bids[j])
-                connections[key]["weight"] += 1
-                connections[key]["shared_authority_ids"].append(aid)
+                key = (b1, bids[j])
+                pair_scores[key] += idf_weight
+                pair_shared_counts[key] += 1
+                prev = pair_min_df.get(key)
+                if prev is None or df < prev:
+                    pair_min_df[key] = df
 
-    print(f"  ✓ Found {len(connections)} total book-to-book connections.")
+    # Filter out weak 1-shared-broad-tag edges; keep >=2 shared tags OR rare 1-tag match (df <= max_single_df)
+    eligible = {}
+    per_book = collections.defaultdict(list)
+    for key, score in pair_scores.items():
+        if pair_shared_counts[key] < 2 and pair_min_df[key] > max_single_df:
+            continue
+        eligible[key] = max(1, round(score * 100))
+        b1, b2 = key
+        per_book[b1].append((eligible[key], b2, key))
+        per_book[b2].append((eligible[key], b1, key))
 
-    # Connection weight distribution
-    weight_dist = defaultdict(int)
-    for conn in connections.values():
-        weight_dist[conn["weight"]] += 1
-    print("  Weight distribution:")
-    for w in sorted(weight_dist.keys()):
-        print(f"    {w} shared authorities: {weight_dist[w]} pairs")
+    kept_keys = set()
+    for _bid, neighbors in per_book.items():
+        neighbors.sort(key=lambda item: (-item[0], item[1]))
+        for _, _, key in neighbors[:top_k_per_book]:
+            kept_keys.add(key)
 
-    # Filter to weight >= 3 (meaningful connections only)
-    MIN_WEIGHT = 3
-    strong_connections = {k: v for k, v in connections.items() if v["weight"] >= MIN_WEIGHT}
-    print(f"  ✓ Keeping {len(strong_connections)} connections with weight ≥ {MIN_WEIGHT}.")
+    connections_list = [
+        {"source": b1, "target": b2, "weight": eligible[(b1, b2)]}
+        for (b1, b2) in kept_keys
+    ]
+    connections_list.sort(key=lambda item: (-item["weight"], item["source"], item["target"]))
 
-    # Step 4: Build and save output
-    print("\n[4/4] Building output data structure...")
+    type_counts = collections.Counter(a["type"] for a in authority_index.values())
+    top_authorities = sorted(multi_link_auths.values(), key=lambda a: (-len(a["biblio_ids"]), a["name"]))[:30]
 
-    # Books list with metadata
-    book_index = {}
-    for book in catalog:
-        bid = book["biblio_id"]
-        book_index[bid] = {
-            "biblio_id": bid,
-            "title": book["title"],
-            "author": book["author"],
-            "authorities": book["authorities"],
-        }
-
-    # Authorities list (serializable) — only those that link ≥2 books
-    authorities_list = []
-    for aid, auth in sorted(multi_link_auths.items(), key=lambda x: x[1]["name"]):
-        authorities_list.append({
-            "authority_id": aid,
-            "name": auth["name"],
-            "type": auth["type"],
-            "book_count": len(auth["biblio_ids"]),
-            "biblio_ids": sorted(auth["biblio_ids"]),
-        })
-
-    # Connections list (serializable)
-    connections_list = []
-    for (bid1, bid2), conn in strong_connections.items():
-        connections_list.append({
-            "source": bid1,
-            "target": bid2,
-            "weight": conn["weight"],
-            "shared_authority_ids": conn["shared_authority_ids"],
-        })
-
-
-    # Sort connections by weight descending
-    connections_list.sort(key=lambda x: -x["weight"])
-
-    # Top connecting authorities (those that link the most books)
-    top_authorities = sorted(
-        multi_link_auths.values(),
-        key=lambda a: -len(a["biblio_ids"])
-    )[:30]
-
-    output = {
+    return {
         "stats": {
             "total_books": len(catalog),
             "total_authorities": len(authority_index),
@@ -140,9 +102,6 @@ def main():
             "total_connections": len(connections_list),
             "type_counts": dict(type_counts),
         },
-        "books": book_index,
-        "authorities": authorities_list,
-        "connections": connections_list,
         "top_authorities": [
             {
                 "authority_id": a["authority_id"],
@@ -152,15 +111,22 @@ def main():
             }
             for a in top_authorities
         ],
+        "connections": connections_list,
     }
 
-    os.makedirs(os.path.dirname(OUTPUT_PATH), exist_ok=True)
-    with open(OUTPUT_PATH, "w", encoding="utf-8") as f:
-        json.dump(output, f, indent=2, ensure_ascii=False)
 
-    print(f"\n  ✓ Saved authority graph to {OUTPUT_PATH}")
-    print(f"  File size: {os.path.getsize(OUTPUT_PATH) / (1024*1024):.1f} MB")
-    print("=" * 60)
+def main():
+    if not CATALOG_PATH.exists():
+        print(f"Error: {CATALOG_PATH} not found.", file=sys.stderr)
+        sys.exit(1)
+
+    with open(CATALOG_PATH, "r", encoding="utf-8") as handle:
+        catalog = json.load(handle)
+
+    output = compute_authority_connections(catalog)
+    write_json_atomic(AUTHORITY_GRAPH_PATH, output)
+    size_mb = os.path.getsize(AUTHORITY_GRAPH_PATH) / (1024 * 1024)
+    print(f"Saved {len(output['connections'])} weighted connections to {AUTHORITY_GRAPH_PATH} ({size_mb:.1f} MB).")
 
 
 if __name__ == "__main__":

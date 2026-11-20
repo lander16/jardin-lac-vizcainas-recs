@@ -139,4 +139,25 @@ class CatalogBookPresenterTest < ActiveSupport::TestCase
     assert_equal [], CatalogBookPresenter.wrap([])
     assert_equal [], CatalogBookPresenter.wrap(nil)
   end
+
+  test "returns 0 connection_count without firing SQL queries when connection_counts hash is empty" do
+    book1 = Book.create!(id: "book_no_sql_1", title: "Rayuela", author: "Julio Cortázar")
+    book2 = Book.create!(id: "book_no_sql_2", title: "Ficciones", author: "Jorge Luis Borges")
+    BookConnection.create!(source_book: book1, target_book: book2, weight: 3)
+
+    presenter = CatalogBookPresenter.new(book1, connection_counts: {})
+
+    queries = []
+    callback = ->(_name, _start, _finish, _id, payload) {
+      queries << payload[:sql] unless payload[:name] == "SCHEMA" || payload[:sql] =~ /PRAGMA|sqlite_/i
+    }
+
+    count = nil
+    ActiveSupport::Notifications.subscribed(callback, "sql.active_record") do
+      count = presenter.connection_count
+    end
+
+    assert_equal 0, count
+    assert_empty queries
+  end
 end

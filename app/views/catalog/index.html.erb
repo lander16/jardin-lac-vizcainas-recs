@@ -1,175 +1,195 @@
 <% content_for :title, "Catálogo Koha e Inspector de Autoridades - Jardín LAC Vizcaínas" %>
 
-<section class="hero" style="margin-bottom:2rem;">
+<section class="hero hero--compact-bottom">
   <h1>Catálogo del Acervo y Red de Autoridades</h1>
   <p>Explora la estructura catalográfica oficial de Koha del Colegio de las Vizcaínas mediante búsqueda inteligente y grafos interconectados.</p>
 </section>
 
-<!-- 6-Card Stats Dashboard Grid -->
-<div class="catalog-stats-grid" style="margin-bottom:2rem;">
+<div class="catalog-stats-grid">
   <div class="glass-card stat-card">
     <div class="stat-icon books">
-      <i class="fa-solid fa-book"></i>
+      <i class="fa-solid fa-book" aria-hidden="true"></i>
     </div>
     <div class="stat-info">
-      <h2>Libros Catalogados</h2>
-      <p><%= number_with_delimiter(@total_books) %></p>
+      <p class="stat-label">Libros Catalogados</p>
+      <p class="stat-value"><%= number_with_delimiter(@total_books) %></p>
     </div>
   </div>
 
   <div class="glass-card stat-card">
     <div class="stat-icon users">
-      <i class="fa-solid fa-tags"></i>
+      <i class="fa-solid fa-tags" aria-hidden="true"></i>
     </div>
     <div class="stat-info">
-      <h2>Etiquetas Únicas</h2>
-      <p><%= number_with_delimiter(@total_authorities) %></p>
+      <p class="stat-label">Etiquetas Únicas</p>
+      <p class="stat-value"><%= number_with_delimiter(@total_authorities) %></p>
     </div>
   </div>
 
   <div class="glass-card stat-card">
     <div class="stat-icon checkouts">
-      <i class="fa-solid fa-link"></i>
+      <i class="fa-solid fa-link" aria-hidden="true"></i>
     </div>
     <div class="stat-info">
-      <h2>Etiquetas por Libro</h2>
-      <p><%= @avg_authorities_per_book %></p>
+      <p class="stat-label">Etiquetas por Libro</p>
+      <p class="stat-value"><%= @avg_authorities_per_book %></p>
     </div>
   </div>
 
   <div class="glass-card stat-card">
     <div class="stat-icon books">
-      <i class="fa-solid fa-layer-group"></i>
+      <i class="fa-solid fa-layer-group" aria-hidden="true"></i>
     </div>
     <div class="stat-info">
-      <h2>Libros por Etiqueta</h2>
-      <p><%= @avg_books_per_authority %></p>
+      <p class="stat-label">Libros por Etiqueta</p>
+      <p class="stat-value"><%= @avg_books_per_authority %></p>
     </div>
   </div>
 
   <div class="glass-card stat-card">
     <div class="stat-icon checkouts">
-      <i class="fa-solid fa-diagram-project"></i>
+      <i class="fa-solid fa-diagram-project" aria-hidden="true"></i>
     </div>
     <div class="stat-info">
-      <h2>Conexiones Fuertes</h2>
-      <p><%= number_with_delimiter(@total_connections) %></p>
+      <p class="stat-label">Conexiones Fuertes</p>
+      <p class="stat-value"><%= number_with_delimiter(@total_connections) %></p>
     </div>
   </div>
 
   <div class="glass-card stat-card">
     <div class="stat-icon users">
-      <i class="fa-solid fa-circle-nodes"></i>
+      <i class="fa-solid fa-circle-nodes" aria-hidden="true"></i>
     </div>
     <div class="stat-info">
-      <h2>Interconexión</h2>
-      <p><%= @percentage_connected %>%</p>
+      <p class="stat-label">Interconexión</p>
+      <p class="stat-value"><%= @percentage_connected %>%</p>
     </div>
   </div>
 </div>
 
-<div class="dashboard-grid" data-controller="modal">
-  <!-- Search & Results Column -->
-  <div class="glass-card" data-controller="search" data-search-url-value="<%= catalog_search_path %>">
-    <div class="section-title">
-      <i class="fa-solid fa-magnifying-glass" style="color:var(--color-accent)"></i>
-      <h2>Búsqueda Inteligente en Catálogo</h2>
-    </div>
-
-    <div class="search-container">
-      <i class="fa-solid fa-magnifying-glass search-icon"></i>
-      <label for="catalog-search-input" class="sr-only">Buscar por título, autor, tema o lugar</label>
-      <input type="text"
-              id="catalog-search-input"
-              class="search-input"
-              placeholder="Buscar por título, autor, tema o lugar (ej. 'Hess', 'México', 'Revolución')..."
-              data-search-target="input"
-              data-action="input->search#input">
-      <button type="button"
-              class="search-clear-btn"
-              data-search-target="clear"
-              data-action="click->search#clear"
-              hidden>
-        Limpiar
-      </button>
-    </div>
-    <div class="search-feedback-row">
-      <p class="search-status" data-search-target="status" aria-live="polite">Mostrando <%= @books.size %> resultados</p>
-    </div>
-
-    <% if QueryEmbedder.default.available? %>
-      <div class="semantic-pill"
-           title="Las búsquedas combinan coincidencia literal (título, autor, autoridad) con similitud semántica via embeddings (sentence-transformers)."
-           style="display:inline-flex; align-items:center; gap:0.35rem; margin-top:0.6rem; padding:0.25rem 0.6rem; background:rgba(125, 79, 155, 0.08); border:1px solid rgba(125, 79, 155, 0.25); border-radius:12px; font-size:0.72rem; color:var(--color-authority); font-weight:600;">
-        <i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i> Búsqueda semántica activa
-      </div>
-    <% end %>
-
-    <%= turbo_frame_tag "catalog-results", data: { search_target: "frame" } do %>
-      <%= render "catalog/search_results_content", books: @books, query: nil %>
-    <% end %>
-  </div>
-
-  <!-- Sidebar: Authority Types & Popular Books -->
-  <div style="display:flex; flex-direction:column; gap:1.5rem;">
-    <!-- Authority Types list -->
-    <div class="glass-card">
+<div data-controller="modal">
+  <div class="dashboard-grid">
+    <div class="glass-card"
+         data-controller="search"
+         data-search-url-value="<%= catalog_search_path %>"
+         data-search-singular-value="resultado"
+         data-search-plural-value="resultados">
       <div class="section-title">
-        <i class="fa-solid fa-list-check" style="color:var(--color-authority)"></i>
-        <h2>Tipos de Autoridad</h2>
+        <i class="fa-solid fa-magnifying-glass section-title-icon--accent" aria-hidden="true"></i>
+        <h2>Búsqueda Inteligente en Catálogo</h2>
       </div>
-      <p style="font-size:0.8rem; color:var(--text-secondary); margin-bottom:1rem;">
-        Haz clic en una categoría para inspeccionar sus descriptores y obras vinculadas.
-      </p>
 
-      <div style="display:flex; flex-direction:column; gap:0.5rem;">
-        <% @type_counts.each do |type, count| %>
-          <div class="catalog-type-chip" 
-               style="display:flex; justify-content:space-between; align-items:center; padding:0.6rem 0.8rem; background:var(--bg-primary); border:1px solid var(--border-light); border-radius:6px; cursor:pointer; transition:all 0.2s;"
-               data-action="click->modal#openAuthorityInspector"
-               data-modal-type-param="<%= type %>">
-            <span style="font-weight:600; font-size:0.88rem; color:var(--text-primary);">
-              <i class="fa-solid fa-tag" style="color:var(--color-authority); font-size:0.8rem; margin-right:0.4rem;"></i> <%= type %>
-            </span>
-            <span style="font-size:0.75rem; font-weight:700; background:rgba(0,0,0,0.05); padding:0.15rem 0.5rem; border-radius:12px; color:var(--text-secondary);">
-              <%= number_with_delimiter(count) %>
-            </span>
+      <form role="search"
+            action="<%= catalog_path %>"
+            method="get"
+            class="search-form"
+            data-action="submit->search#submitNow">
+        <div class="search-container">
+          <div class="search-input-wrap">
+            <i class="fa-solid fa-magnifying-glass search-icon" aria-hidden="true"></i>
+            <label for="catalog-search-input" class="sr-only">Buscar por título, autor, tema o lugar</label>
+            <input type="search"
+                   id="catalog-search-input"
+                   name="q"
+                   value="<%= @query %>"
+                   class="search-input"
+                   placeholder="Buscar por título, autor, tema o lugar (ej. 'Hess', 'México', 'Revolución')..."
+                   data-search-target="input"
+                   data-action="input->search#input">
           </div>
-        <% end %>
+          <button type="button"
+                  class="search-clear-btn"
+                  data-search-target="clear"
+                  data-action="click->search#clear"
+                  hidden>
+            Limpiar
+          </button>
+        </div>
+      </form>
+      <div class="search-feedback-row">
+        <p class="search-status" data-search-target="status" aria-live="polite">
+          Mostrando <%= pluralize_es(@books.size, "resultado", "resultados") %>
+        </p>
       </div>
+
+      <% if @semantic_search_available %>
+        <div class="semantic-pill"
+             title="Las búsquedas combinan coincidencia literal (título, autor, autoridad) con similitud semántica vía embeddings (sentence-transformers).">
+          <i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i> Búsqueda semántica activa
+        </div>
+      <% end %>
+
+      <%= turbo_frame_tag "catalog-results", data: { search_target: "frame" } do %>
+        <%= render "catalog/search_results_content", books: @books, query: @query %>
+      <% end %>
     </div>
 
-    <!-- Top Connected Books -->
-    <div class="glass-card">
-      <div class="section-title">
-        <i class="fa-solid fa-fire" style="color:var(--color-gold)"></i>
-        <h2>Obras con Mayor Red de Conexiones</h2>
+    <div class="sidebar-stack">
+      <div class="glass-card">
+        <div class="section-title">
+          <i class="fa-solid fa-list-check section-title-icon--authority" aria-hidden="true"></i>
+          <h2>Tipos de Autoridad</h2>
+        </div>
+        <p class="section-subtitle">
+          Haz clic en una categoría para inspeccionar sus descriptores y obras vinculadas.
+        </p>
+
+        <div class="catalog-types-list">
+          <% @type_counts.each do |type, count| %>
+            <button type="button"
+                    class="catalog-type-chip"
+                    data-action="click->modal#openAuthorityInspector"
+                    data-modal-type-param="<%= type %>">
+              <span class="catalog-type-label">
+                <i class="fa-solid fa-tag" aria-hidden="true"></i> <%= type %>
+              </span>
+              <span class="catalog-type-badge">
+                <%= number_with_delimiter(count) %>
+              </span>
+            </button>
+          <% end %>
+        </div>
       </div>
 
-      <div style="display:flex; flex-direction:column; gap:0.6rem;">
-        <% @popular_books.each_with_index do |b, idx| %>
-          <div style="display:flex; justify-content:space-between; align-items:center; background:var(--bg-primary); padding:0.6rem 0.8rem; border-radius:6px; border:1px solid var(--border-light); gap:0.5rem; min-width:0;">
-            <div style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:0.88rem; font-weight:500; min-width:0; flex:1;">
-              <span style="color:var(--text-muted); margin-right:0.4rem; font-family:var(--font-display); font-weight:700;">#<%= idx+1 %></span>
-              <a href="<%= catalog_graph_path(b.id) %>" style="color:var(--text-primary); text-decoration:none; font-weight:600;" onmouseover="this.style.color='var(--color-accent)'" onmouseout="this.style.color='var(--text-primary)'">
-                <%= b.title %>
-              </a>
+      <div class="glass-card">
+        <div class="section-title">
+          <i class="fa-solid fa-fire section-title-icon--hybrid" aria-hidden="true"></i>
+          <h2>Obras con Mayor Red de Conexiones</h2>
+        </div>
+
+        <div class="popular-books-list">
+          <% @popular_books.each_with_index do |b, idx| %>
+            <div class="popular-book-row">
+              <div class="popular-book-main">
+                <span class="popular-book-rank">#<%= idx + 1 %></span>
+                <%= link_to b.title, catalog_graph_path(b.id), class: "book-title-link", title: b.title %>
+              </div>
+              <% connections_label = pluralize_es(b.connections_count, "conexión", "conexiones") %>
+              <%= link_to catalog_graph_path(b.id),
+                          class: "source-badge authority popular-book-badge",
+                          title: connections_label,
+                          aria: { label: "#{b.title}: #{connections_label}" } do %>
+                <i class="fa-solid fa-diagram-project" aria-hidden="true"></i> <%= b.connections_count %> con.
+              <% end %>
             </div>
-            <a href="<%= catalog_graph_path(b.id) %>" class="source-badge authority" style="font-size:0.68rem; padding:0.15rem 0.4rem; flex-shrink:0; text-decoration:none;">
-              <i class="fa-solid fa-diagram-project"></i> <%= b.connections_count %> con.
-            </a>
-          </div>
-        <% end %>
+          <% end %>
+        </div>
       </div>
     </div>
   </div>
-</div>
 
-<!-- Authority Inspector Modal -->
-<dialog id="authority-inspector-modal" class="inspector-modal-overlay" data-modal-target="inspectorDialog" style="border:none; padding:0; background:transparent;">
-  <div class="inspector-modal-card" style="width:90vw; max-width:1100px; height:85vh; max-height:750px; background:white; border-radius:12px; overflow:hidden; box-shadow:0 25px 50px -12px rgba(0, 0, 0, 0.25);">
-    <%= turbo_frame_tag "authority-inspector" do %>
-      <div style="text-align:center; padding:5rem;"><i class="fa fa-spinner fa-spin fa-2x" style="color:var(--color-accent)"></i></div>
-    <% end %>
-  </div>
-</dialog>
+  <dialog id="authority-inspector-modal"
+          class="inspector-modal"
+          data-modal-target="inspectorDialog"
+          data-action="click->modal#backdropClose"
+          aria-labelledby="authority-inspector-title">
+    <div class="inspector-modal-card">
+      <%= turbo_frame_tag "authority-inspector" do %>
+        <div class="inspector-modal-loading">
+          <i class="fa-solid fa-spinner fa-spin fa-2x" aria-hidden="true"></i>
+          <span>Cargando autoridades…</span>
+        </div>
+      <% end %>
+    </div>
+  </dialog>
+</div>

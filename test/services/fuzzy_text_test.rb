@@ -3,6 +3,27 @@
 require "test_helper"
 
 class FuzzyTextTest < ActiveSupport::TestCase
+  # normalize_text
+  test "normalize_text handles blank and nil input" do
+    assert_equal "", FuzzyText.normalize_text(nil)
+    assert_equal "", FuzzyText.normalize_text("")
+    assert_equal "", FuzzyText.normalize_text("   ")
+  end
+
+  test "normalize_text lowercases, folds accents, replaces punctuation with spaces, and squeezes whitespace" do
+    assert_equal "estado nacion 1939 1945", FuzzyText.normalize_text("  ¡Estado-nación, 1939-1945!  ")
+    assert_equal "garcia marquez gabriel", FuzzyText.normalize_text("García Márquez, Gabriel")
+  end
+
+  test "SPANISH_STOPWORDS is frozen and contains expected stopwords" do
+    assert FuzzyText::SPANISH_STOPWORDS.frozen?
+    %w[el la de del los las para como].each do |stopword|
+      assert_includes FuzzyText::SPANISH_STOPWORDS, stopword
+    end
+    assert_not_includes FuzzyText::SPANISH_STOPWORDS, "historia"
+    assert_not_includes FuzzyText::SPANISH_STOPWORDS, "arte"
+  end
+
   # normalize_word
   test "normalize_word handles blank and nil input" do
     assert_nil FuzzyText.normalize_word(nil)
@@ -35,6 +56,10 @@ class FuzzyTextTest < ActiveSupport::TestCase
     input = "El ingenioso hidalgo Don Quijote de la Mancha Don Quijote"
     expected = [ "ingenioso", "hidalgo", "don", "quijote", "mancha" ]
     assert_equal expected, FuzzyText.normalize_words(input)
+  end
+
+  test "normalize_words splits hyphenated and punctuated words" do
+    assert_equal [ "estado", "nacion", "1939", "1945" ], FuzzyText.normalize_words("Estado-nación 1939-1945")
   end
 
   # trigrams_of

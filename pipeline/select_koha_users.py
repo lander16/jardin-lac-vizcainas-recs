@@ -1,142 +1,135 @@
-import json
+"""
+Sample 300 active patrons from Goodreads interactions mapped to Koha biblio_ids.
+
+Fixes:
+- Deduplicate checkouts by Koha biblio_id (prevents repeat rows across editions)
+- Sort eligible users and per-user biblio_ids for deterministic output
+- Bound checkout dates to 2024-01-01 .. 2026-06-30 (no future dates)
+- Emit slim CSV without duplicated description blobs
+"""
+
 import csv
+import json
 import os
 import random
+import sys
+import tempfile
+
+try:
+    from .config import CHECKOUTS_PATH, GOODREADS_DIR, MAPPING_PATH
+except ImportError:
+    from config import CHECKOUTS_PATH, GOODREADS_DIR, MAPPING_PATH
+
+TARGET_USER_COUNT = 300
+MIN_MATCHED_BOOKS = 10
+
+
+def select_eligible_users(user_checkouts, target_count=TARGET_USER_COUNT, min_books=MIN_MATCHED_BOOKS, seed=42):
+    eligible = sorted(uid for uid, books in user_checkouts.items() if len(books) >= min_books)
+    if len(eligible) < target_count:
+        fallback_min = 6
+        eligible = sorted(uid for uid, books in user_checkouts.items() if len(books) >= fallback_min)
+        print(f"  NOTE: fewer than {target_count} users at >= {min_books}; widened threshold to >= {fallback_min} ({len(eligible)} users).")
+    if len(eligible) <= target_count:
+        return eligible
+    rng = random.Random(seed)
+    return sorted(rng.sample(eligible, target_count))
+
+
+def generate_checkout_date(rng):
+    year = rng.choice([2024, 2025, 2026])
+    max_month = 6 if year == 2026 else 12
+    month = rng.randint(1, max_month)
+    day = rng.randint(1, 28)
+    hour = rng.randint(8, 20)
+    minute = rng.randint(0, 59)
+    second = rng.randint(0, 59)
+    return f"{year:04d}-{month:02d}-{day:02d} {hour:02d}:{minute:02d}:{second:02d}"
+
 
 def main():
-    mapping_file = "data/koha_goodreads_mapping.json"
-    interactions_file = "goodreads/goodreads_interactions.csv"
-    book_map_file = "goodreads/book_id_map.csv"
-    user_map_file = "goodreads/user_id_map.csv"
-    output_file = "data/koha_checkouts.csv"
-    
-    if not os.path.exists(mapping_file):
-        print(f"Error: {mapping_file} not found. Please run match_koha_goodreads.py first.")
-        return
-        
-    if not os.path.exists(interactions_file):
-        print(f"Error: {interactions_file} not found.")
-        return
-        
-    print("Loading Koha-Goodreads mapping...")
-    with open(mapping_file, 'r', encoding='utf-8') as f:
-        mapping = json.load(f)
-        
-    work_to_koha = mapping['work_to_koha']
-    
-    # Map Goodreads book_id to Koha book details
-    gr_book_to_koha = {}
-    for work_id, koha_info in work_to_koha.items():
-        for gr_bid in koha_info.get('gr_book_ids', []):
-            gr_book_to_koha[gr_bid] = {
-                'biblio_id': koha_info['biblio_id'],
-                'title': koha_info['koha_title'],
-                'description': koha_info.get('description', '')
-            }
-            
-    matched_gr_ids = set(gr_book_to_koha.keys())
-    print(f"Loaded {len(matched_gr_ids)} matched Goodreads book IDs.")
-    
-    # Load book CSV ID to real Goodreads book ID map
-    print("Loading book ID map...")
-    book_id_map = {}
-    with open(book_map_file, 'r', encoding='utf-8') as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            book_id_map[row['book_id_csv']] = row['book_id']
-            
-    # Load user CSV ID to real Goodreads user ID map
-    print("Loading user ID map...")
-    user_id_map = {}
-    with open(user_map_file, 'r', encoding='utf-8') as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            user_id_map[row['user_id_csv']] = row['user_id']
-            
-    # Scan interactions to count matched books read per user
-    print("Scanning interactions to identify eligible users...")
-    user_checkouts = {}  # user_csv_id -> set of real_book_id (deduplicated)
-    total_interactions = 0
+    interactions_file = GOODREADS_DIR / "goodreads_interactions.csv"
+    book_map_file = GOODREADS_DIR / "book_id_map.csv"
+    user_map_file = GOODREADS_DIR / "user_id_map.csv"
 
-    with open(interactions_file, 'r', encoding='utf-8') as f:
-        reader = csv.DictReader(f)
-        for row in reader:
+    for required in (MAPPING_PATH, interactions_file, book_map_file, user_map_file):
+        if not required.exists():
+            print(f"Error: {required} not found.", file=sys.stderr)
+            sys.exit(1)
+
+    with open(MAPPING_PATH, "r", encoding="utf-8") as handle:
+        mapping = json.load(handle)
+
+    gr_book_to_koha = {}
+    koha_titles = {}
+    for _work_id, info in mapping["work_to_koha"].items():
+        bid = str(info["biblio_id"])
+        koha_titles[bid] = info["koha_title"]
+        for gr_bid in info.get("gr_book_ids", []):
+            gr_book_to_koha[gr_bid] = bid
+
+    print(f"Loaded {len(gr_book_to_koha)} Goodreads edition IDs across {len(koha_titles)} Koha books.")
+
+    book_id_map = {}
+    with open(book_map_file, "r", encoding="utf-8") as handle:
+        for row in csv.DictReader(handle):
+            real_bid = row["book_id"]
+            if real_bid in gr_book_to_koha:
+                book_id_map[row["book_id_csv"]] = gr_book_to_koha[real_bid]
+
+    user_id_map = {}
+    with open(user_map_file, "r", encoding="utf-8") as handle:
+        for row in csv.DictReader(handle):
+            user_id_map[row["user_id_csv"]] = row["user_id"]
+
+    user_checkouts = {}
+    total_interactions = 0
+    with open(interactions_file, "r", encoding="utf-8") as handle:
+        for row in csv.DictReader(handle):
             total_interactions += 1
             if total_interactions % 20000000 == 0:
-                print(f"  Scanned {total_interactions/1000000:.0f}M interactions...")
+                print(f"  Scanned {total_interactions / 1000000:.0f}M interactions...")
 
-            user_csv_id = row['user_id']
-            book_csv_id = row['book_id']
-            is_read = row.get('is_read', '0')
-            rating = row.get('rating', '0')
-
-            # Only count books read or rated
-            if is_read != '1' and rating == '0':
+            if row.get("is_read", "0") != "1" and row.get("rating", "0") == "0":
                 continue
 
-            real_book_id = book_id_map.get(book_csv_id)
-            if not real_book_id or real_book_id not in matched_gr_ids:
+            koha_bid = book_id_map.get(row["book_id"])
+            if not koha_bid:
                 continue
 
-            # Use a set so multiple interactions with the same book (e.g.
-            # rated + read) don't inflate the "10 matches" threshold or
-            # produce duplicate checkout rows downstream.
-            user_checkouts.setdefault(user_csv_id, set()).add(real_book_id)
+            user_checkouts.setdefault(row["user_id"], set()).add(koha_bid)
 
-    print(f"Total users with at least 1 match: {len(user_checkouts)}")
-    
-    # Filter users with at least 10 matches
-    eligible_users = {uid: books for uid, books in user_checkouts.items() if len(books) >= 10}
-    print(f"Total eligible users (>= 10 matches): {len(eligible_users)}")
-    
-    if len(eligible_users) < 300:
-        print("Warning: Less than 300 eligible users found. Selecting all of them.")
-        selected_uids = list(eligible_users.keys())
-    else:
-        # Select 300 users randomly using a seed
-        random.seed(42)
-        selected_uids = random.sample(list(eligible_users.keys()), 300)
-        
-    print(f"Selected {len(selected_uids)} users.")
-    
-    # Write output CSV
-    print(f"Writing checkouts to {output_file}...")
-    
-    # Seed dates for realistic dates
-    date_random = random.Random(42)
-    
-    with open(output_file, mode='w', encoding='utf-8', newline='') as f:
-        fieldnames = ['user_id', 'book_id', 'title', 'description', 'checkout_date']
-        writer = csv.DictWriter(f, fieldnames=fieldnames)
-        writer.writeheader()
-        
-        for user_csv_id in selected_uids:
-            # Map user_csv_id to real user MD5 ID
-            real_user_id = user_id_map.get(user_csv_id, f"user_{user_csv_id}")
-            
-            # Write row for each book they read
-            books_read = eligible_users[user_csv_id]
-            for gr_bid in books_read:
-                koha_info = gr_book_to_koha[gr_bid]
-                
-                # Plausible random checkout date in 2025/2026
-                year = date_random.choice([2025, 2026])
-                month = date_random.randint(1, 12)
-                day = date_random.randint(1, 28)
-                hour = date_random.randint(8, 20)
-                minute = date_random.randint(0, 59)
-                second = date_random.randint(0, 59)
-                checkout_date = f"{year:04d}-{month:02d}-{day:02d} {hour:02d}:{minute:02d}:{second:02d}"
-                
-                writer.writerow({
-                    'user_id': real_user_id,
-                    'book_id': koha_info['biblio_id'],
-                    'title': koha_info['title'],
-                    'description': koha_info['description'],
-                    'checkout_date': checkout_date
-                })
-                
-    print(f"Successfully generated {output_file}.")
+    selected_uids = select_eligible_users(user_checkouts)
+    print(f"Selected {len(selected_uids)} users from {len(user_checkouts)} active readers.")
+
+    date_rng = random.Random(42)
+    CHECKOUTS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp_path = tempfile.mkstemp(prefix=f".{CHECKOUTS_PATH.name}.", dir=str(CHECKOUTS_PATH.parent))
+    total_rows = 0
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8", newline="") as handle:
+            writer = csv.DictWriter(handle, fieldnames=["user_id", "book_id", "title", "checkout_date"])
+            writer.writeheader()
+
+            for user_csv_id in selected_uids:
+                real_user_id = user_id_map.get(user_csv_id, f"user_{user_csv_id}")
+                for koha_bid in sorted(user_checkouts[user_csv_id]):
+                    writer.writerow({
+                        "user_id": real_user_id,
+                        "book_id": koha_bid,
+                        "title": koha_titles.get(koha_bid, f"Book {koha_bid}"),
+                        "checkout_date": generate_checkout_date(date_rng),
+                    })
+                    total_rows += 1
+        os.chmod(tmp_path, 0o644)
+        os.replace(tmp_path, CHECKOUTS_PATH)
+    except Exception:
+        if os.path.exists(tmp_path):
+            os.unlink(tmp_path)
+        raise
+
+    print(f"Wrote {total_rows} deduplicated checkouts to {CHECKOUTS_PATH}.")
+
 
 if __name__ == "__main__":
     main()

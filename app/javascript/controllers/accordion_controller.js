@@ -1,24 +1,21 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-  static targets = ["panel", "icon", "button"]
+  static targets = ["panel", "button"]
 
   toggle() {
     if (!this.hasPanelTarget) return
 
-    const isHidden = this.panelTarget.style.display === "none" || !this.panelTarget.style.display
-    this.panelTarget.style.display = isHidden ? "block" : "none"
+    const willOpen = this.panelTarget.hasAttribute("hidden")
+    this.panelTarget.hidden = !willOpen
+    this.panelTarget.classList.toggle("active", willOpen)
 
-    if (this.hasIconTarget) {
-      this.iconTarget.style.transform = isHidden ? "rotate(180deg)" : "rotate(0deg)"
-    }
+    const button = this.hasButtonTarget
+      ? this.buttonTarget
+      : (this.element.tagName === "BUTTON" ? this.element : null)
 
-    // Keep aria-expanded in sync with the visible state so screen readers
-    // announce the change and keyboard users get a hint.
-    if (this.hasButtonTarget) {
-      this.buttonTarget.setAttribute("aria-expanded", String(isHidden))
-    } else if (this.element.tagName === "BUTTON") {
-      this.element.setAttribute("aria-expanded", String(isHidden))
+    if (button) {
+      button.setAttribute("aria-expanded", String(willOpen))
     }
   }
 }

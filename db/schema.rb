@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_09_152426) do
+ActiveRecord::Schema[8.1].define(version: 2026_11_19_150200) do
   create_table "authorities", id: :string, force: :cascade do |t|
     t.string "authority_type", null: false
     t.integer "books_count", default: 0, null: false
@@ -18,6 +18,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_09_152426) do
     t.string "marc_field"
     t.string "name", null: false
     t.datetime "updated_at", null: false
+    t.index ["authority_type", "books_count"], name: "index_authorities_on_authority_type_and_books_count"
     t.index ["authority_type"], name: "index_authorities_on_authority_type"
     t.index ["name"], name: "index_authorities_on_name"
   end
@@ -29,7 +30,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_09_152426) do
     t.datetime "updated_at", null: false
     t.index ["authority_id"], name: "index_book_authorities_on_authority_id"
     t.index ["book_id", "authority_id"], name: "index_book_authorities_on_book_id_and_authority_id", unique: true
-    t.index ["book_id"], name: "index_book_authorities_on_book_id"
   end
 
   create_table "book_connections", force: :cascade do |t|
@@ -39,7 +39,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_09_152426) do
     t.datetime "updated_at", null: false
     t.integer "weight", null: false
     t.index ["source_book_id", "target_book_id"], name: "index_book_connections_on_source_book_id_and_target_book_id", unique: true
-    t.index ["source_book_id"], name: "index_book_connections_on_source_book_id"
+    t.index ["source_book_id", "weight"], name: "index_book_connections_on_source_book_id_and_weight"
+    t.index ["target_book_id", "weight"], name: "index_book_connections_on_target_book_id_and_weight"
     t.index ["target_book_id"], name: "index_book_connections_on_target_book_id"
   end
 
@@ -50,7 +51,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_09_152426) do
     t.datetime "updated_at", null: false
     t.string "word", null: false
     t.index ["book_id", "word", "source"], name: "index_book_words_on_book_id_and_word_and_source", unique: true
-    t.index ["book_id"], name: "index_book_words_on_book_id"
     t.index ["word"], name: "index_book_words_on_word"
   end
 
@@ -63,6 +63,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_09_152426) do
     t.string "source"
     t.string "title", null: false
     t.datetime "updated_at", null: false
+    t.string "normalized_title"
+    t.string "normalized_author"
+    t.index ["normalized_author"], name: "index_books_on_normalized_author"
+    t.index ["normalized_title"], name: "index_books_on_normalized_title"
     t.index ["title"], name: "index_books_on_title"
   end
 
@@ -75,7 +79,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_09_152426) do
     t.datetime "updated_at", null: false
     t.index ["book_id"], name: "index_checkouts_on_book_id"
     t.index ["patron_id", "book_id"], name: "index_checkouts_on_patron_id_and_book_id"
-    t.index ["patron_id"], name: "index_checkouts_on_patron_id"
+    t.index ["patron_id", "checkout_date"], name: "index_checkouts_on_patron_id_and_checkout_date"
   end
 
   create_table "content_similarities", force: :cascade do |t|
@@ -85,7 +89,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_09_152426) do
     t.float "similarity", null: false
     t.datetime "updated_at", null: false
     t.index ["book_id", "similar_book_id"], name: "index_content_similarities_on_book_id_and_similar_book_id", unique: true
-    t.index ["book_id"], name: "index_content_similarities_on_book_id"
+    t.index ["book_id", "similarity"], name: "index_content_similarities_on_book_id_and_similarity"
+    t.index ["similar_book_id", "similarity"], name: "index_content_similarities_on_similar_book_id_and_similarity"
     t.index ["similar_book_id"], name: "index_content_similarities_on_similar_book_id"
   end
 
@@ -96,9 +101,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_09_152426) do
     t.string "email"
     t.string "name", null: false
     t.datetime "updated_at", null: false
+    t.string "normalized_name"
     t.index ["cardnumber"], name: "index_patrons_on_cardnumber"
     t.index ["email"], name: "index_patrons_on_email"
     t.index ["name"], name: "index_patrons_on_name"
+    t.index ["normalized_name"], name: "index_patrons_on_normalized_name"
   end
 
   create_table "user_similarities", force: :cascade do |t|
@@ -107,8 +114,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_09_152426) do
     t.string "patron_id", null: false
     t.string "similar_patron_id", null: false
     t.datetime "updated_at", null: false
+    t.index ["patron_id", "jaccard_score"], name: "index_user_similarities_on_patron_id_and_jaccard_score"
     t.index ["patron_id", "similar_patron_id"], name: "index_user_similarities_on_patron_id_and_similar_patron_id", unique: true
-    t.index ["patron_id"], name: "index_user_similarities_on_patron_id"
     t.index ["similar_patron_id"], name: "index_user_similarities_on_similar_patron_id"
   end
 

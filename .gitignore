@@ -1,6 +1,11 @@
-# Large raw dataset files
+# Large raw dataset files & intermediate/legacy pipeline artifacts
 goodreads/
 backup/
+data/recommendations.json
+data/collab_recommendations.json
+data/embeddings.npz
+data/active_checkouts.json
+data/koha_goodreads_mapping.json
 
 # Dead prototype code removed from the tree (kept in .gitignore as a
 # safety net if anyone tries to reintroduce it).

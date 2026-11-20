@@ -1,101 +1,251 @@
 """
-Generate semantic embeddings for every book in the Koha catalog using
-the sentence-transformers model all-MiniLM-L6-v2 (pinned to a specific
-revision for reproducibility).
-
-Inputs:  data/koha/catalog.json
-Outputs: data/book_metadata.json
-         data/embeddings.npz          (book_ids, embeddings)
-         data/content_similarities.json  (top-50 cosine neighbours per book)
+Generate two aligned semantic representations for the cleaned Koha catalog:
+1. Offline multilingual similarities (`data/content_similarities.json`) using
+   `paraphrase-multilingual-MiniLM-L12-v2` for accurate Spanish book/user
+   recommendations without inflating Render memory or Git LFS size.
+2. Runtime search vectors (`data/embeddings.bin` + `data/embeddings_index.json`)
+   encoded directly through `data/mini_lm_onnx/model_quantized.onnx` +
+   `tokenizer.json` so offline book vectors and Rails `QueryEmbedder` vectors
+   live in the exact same quantized vector space (zero quantization drift).
+Also writes clean `data/book_metadata.json` from `catalog.json` +
+`data/koha_goodreads_mapping.json`.
 """
 
-import csv
+import argparse
+import collections
 import json
 import os
-import numpy as np
-import sentence_transformers
+import sys
+import tempfile
 
-# Pinned model name. Set SENTENCE_TRANSFORMER_REVISION in the environment
-# to pin to a specific Hugging Face commit for byte-identical offline
-# vectors across runs (recommended for production). When unset, the
-# latest revision is used.
-MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
-MODEL_REVISION = os.environ.get("SENTENCE_TRANSFORMER_REVISION")  # None → latest
+try:
+    from .config import (
+        BOOK_METADATA_PATH,
+        CATALOG_PATH,
+        CONTENT_SIMILARITIES_PATH,
+        EMBEDDING_DIM,
+        EMBEDDINGS_BIN_PATH,
+        EMBEDDINGS_INDEX_PATH,
+        MAPPING_PATH,
+        ONLINE_MODEL_NAME,
+        ONLINE_MODEL_REVISION,
+        ONNX_DIR,
+        ONNX_MAX_TOKENS,
+        SIMILARITY_MODEL_NAME,
+        SIMILARITY_MODEL_REVISION,
+        clean_whitespace,
+        normalize_ascii_text,
+        write_json_atomic,
+    )
+except ImportError:
+    from config import (
+        BOOK_METADATA_PATH,
+        CATALOG_PATH,
+        CONTENT_SIMILARITIES_PATH,
+        EMBEDDING_DIM,
+        EMBEDDINGS_BIN_PATH,
+        EMBEDDINGS_INDEX_PATH,
+        MAPPING_PATH,
+        ONLINE_MODEL_NAME,
+        ONLINE_MODEL_REVISION,
+        ONNX_DIR,
+        ONNX_MAX_TOKENS,
+        SIMILARITY_MODEL_NAME,
+        SIMILARITY_MODEL_REVISION,
+        clean_whitespace,
+        normalize_ascii_text,
+        write_json_atomic,
+    )
 
-KATHA_CATALOG = "data/koha/catalog.json"
-KOHA_CHECKOUTS_CSV = "data/koha_checkouts.csv"
-OUTPUT_DIR = "data"
-METADATA_FILE = os.path.join(OUTPUT_DIR, "book_metadata.json")
-EMBEDDINGS_FILE = os.path.join(OUTPUT_DIR, "embeddings.npz")
-# Ruby-friendly sidecars produced alongside the .npz so the Rails
-# import task can stream the 384-dim vectors without needing a
-# numpy / npy library in Ruby.
-EMBEDDINGS_BIN_FILE = os.path.join(OUTPUT_DIR, "embeddings.bin")
-EMBEDDINGS_INDEX_FILE = os.path.join(OUTPUT_DIR, "embeddings_index.json")
-SIMILARITIES_FILE = os.path.join(OUTPUT_DIR, "content_similarities.json")
-EMBEDDING_DIM = 384
+TOP_SIMILAR_COUNT = 50
+MIN_SIMILARITY = 0.30
+MAX_DESCRIPTION_CHARS = 240
+MEGA_UMBRELLA_DF = 500
 
 
-def load_koha_books():
-    """Read every book in the Koha catalog (titles + authors)."""
-    if not os.path.exists(KATHA_CATALOG):
-        raise FileNotFoundError(
-            f"{KATHA_CATALOG} not found. Run pipeline/fetch_koha_catalog.py first."
-        )
-    with open(KATHA_CATALOG, "r", encoding="utf-8") as f:
-        catalog = json.load(f)
-    print(f"Loaded {len(catalog)} books from Koha catalog.")
-    return catalog
+def load_koha_books(catalog_path=CATALOG_PATH):
+    if not catalog_path.exists():
+        raise FileNotFoundError(f"{catalog_path} not found. Run pipeline/fetch_koha_catalog.py first.")
+    with open(catalog_path, "r", encoding="utf-8") as handle:
+        raw = json.load(handle)
+
+    deduped = {}
+    for book in raw:
+        bid = str(book.get("biblio_id") or "").strip()
+        if not bid:
+            continue
+        if bid not in deduped:
+            deduped[bid] = book
+    return list(deduped.values())
 
 
-def load_koha_descriptions():
-    """Optionally enrich titles with Goodreads descriptions when available."""
+def load_descriptions_from_mapping(mapping_path=MAPPING_PATH):
+    """Load cleaned Spanish Goodreads descriptions for all matched catalog books."""
     descriptions = {}
-    csv_path = KOHA_CHECKOUTS_CSV
-    if not os.path.exists(csv_path):
+    if not mapping_path.exists():
         return descriptions
-    with open(csv_path, "r", encoding="utf-8") as f:
-        for row in csv.DictReader(f):
-            bid = row.get("book_id")
-            desc = (row.get("description") or "").strip()
-            if bid and desc and bid not in descriptions:
-                descriptions[bid] = desc
-    print(f"Loaded descriptions for {len(descriptions)} books (from checkout CSV).")
+    with open(mapping_path, "r", encoding="utf-8") as handle:
+        mapping = json.load(handle)
+    for _work_id, info in (mapping.get("work_to_koha") or {}).items():
+        bid = str(info.get("biblio_id") or "").strip()
+        desc = clean_whitespace(info.get("description") or "")
+        if bid and desc and len(desc) > len(descriptions.get(bid, "")):
+            descriptions[bid] = desc
     return descriptions
 
 
-def build_text(book, description):
-    """Concatenate title + author + description for a single embedding."""
+def compute_authority_frequencies(books):
+    counts = collections.Counter()
+    for book in books:
+        seen = set()
+        for auth in book.get("authorities") or []:
+            aid = str(auth.get("authority_id") or "").strip()
+            if aid and aid not in seen:
+                seen.add(aid)
+                counts[aid] += 1
+    return counts
+
+
+def build_text(book, description="", authority_df=None):
+    """
+    Build concise, high-signal text with Title, Author, and specific Subjects FIRST,
+    and truncated Description LAST so sequence truncation never drops authorities.
+    """
     parts = []
-    if book.get("title"):
-        parts.append(f"Title: {book['title']}")
-    if book.get("author"):
-        parts.append(f"Author: {book['author']}")
-    if description:
-        parts.append(f"Description: {description}")
-    # Authority names add domain signal (subjects, places, periods).
-    authorities = book.get("authorities") or []
-    if authorities:
-        auth_names = [a["name"] for a in authorities if a.get("name")]
-        if auth_names:
-            parts.append("Subjects: " + ", ".join(auth_names[:8]))
-    return "\n".join(parts)
+    title = clean_whitespace(book.get("title") or "")
+    author = clean_whitespace(book.get("author") or "")
+    if title:
+        parts.append(title)
+    if author:
+        parts.append(author)
+
+    norm_author = normalize_ascii_text(author)
+    auth_df = authority_df or {}
+    seen_names = set()
+    subject_candidates = []
+    for auth in book.get("authorities") or []:
+        name = clean_whitespace(auth.get("name") or "")
+        if not name:
+            continue
+        norm_name = normalize_ascii_text(name)
+        if norm_author and norm_name == norm_author:
+            continue
+        if norm_name in seen_names:
+            continue
+        seen_names.add(norm_name)
+        df = auth_df.get(str(auth.get("authority_id") or ""), 1)
+        is_mega = 1 if df > MEGA_UMBRELLA_DF else 0
+        subject_candidates.append((is_mega, df, name))
+
+    subject_candidates.sort(key=lambda item: (item[0], item[1], item[2]))
+    chosen_subjects = [name for _, _, name in subject_candidates[:12]]
+    if chosen_subjects:
+        parts.append("; ".join(chosen_subjects))
+
+    clean_desc = clean_whitespace(description)
+    if clean_desc:
+        parts.append(clean_desc[:MAX_DESCRIPTION_CHARS])
+
+    return ". ".join(parts)
+
+
+def compute_top_similarities(book_ids, embeddings, *, top_k=TOP_SIMILAR_COUNT, min_similarity=MIN_SIMILARITY):
+    import numpy as np
+
+    n = len(book_ids)
+    if n <= 1:
+        return {bid: [] for bid in book_ids}
+
+    k = min(top_k, n - 1)
+    sim_matrix = np.dot(embeddings, embeddings.T)
+    np.clip(sim_matrix, -1.0, 1.0, out=sim_matrix)
+    np.fill_diagonal(sim_matrix, -np.inf)
+
+    content_similarities = {}
+    for i, bid in enumerate(book_ids):
+        row = sim_matrix[i]
+        top_idx = np.argpartition(-row, k - 1)[:k]
+        top_idx = top_idx[np.argsort(-row[top_idx])]
+        neighbors = []
+        for j in top_idx:
+            score = float(row[j])
+            if not np.isfinite(score) or score < min_similarity:
+                continue
+            neighbors.append({"book_id": book_ids[j], "similarity": round(min(score, 1.0), 6)})
+        content_similarities[bid] = neighbors
+    return content_similarities
+
+
+def encode_with_onnx(texts, onnx_dir=ONNX_DIR, *, max_tokens=ONNX_MAX_TOKENS, batch_size=64):
+    import numpy as np
+    import onnxruntime as ort
+    from tokenizers import Tokenizer
+
+    model_path = onnx_dir / "model_quantized.onnx"
+    if not model_path.exists():
+        model_path = onnx_dir / "model.onnx"
+    tokenizer_path = onnx_dir / "tokenizer.json"
+
+    tokenizer = Tokenizer.from_file(str(tokenizer_path))
+    tokenizer.enable_truncation(max_length=max_tokens)
+    tokenizer.enable_padding(pad_id=0, length=max_tokens)
+
+    session = ort.InferenceSession(str(model_path), providers=["CPUExecutionProvider"])
+    input_names = {inp.name for inp in session.get_inputs()}
+    output_names = [out.name for out in session.get_outputs()]
+
+    vectors = []
+    for start in range(0, len(texts), batch_size):
+        batch = texts[start:start + batch_size]
+        encodings = tokenizer.encode_batch(batch)
+        input_ids = np.array([enc.ids for enc in encodings], dtype=np.int64)
+        attention_mask = np.array([enc.attention_mask for enc in encodings], dtype=np.int64)
+
+        feeds = {"input_ids": input_ids, "attention_mask": attention_mask}
+        if "token_type_ids" in input_names:
+            feeds["token_type_ids"] = np.zeros_like(input_ids, dtype=np.int64)
+
+        token_embeddings = session.run(output_names, feeds)[0]
+        mask_expanded = np.expand_dims(attention_mask, axis=-1).astype(np.float32)
+        summed = np.sum(token_embeddings * mask_expanded, axis=1)
+        counts = np.clip(np.sum(mask_expanded, axis=1), a_min=1e-9, a_max=None)
+        pooled = summed / counts
+        norms = np.linalg.norm(pooled, axis=1, keepdims=True)
+        norms = np.where(norms == 0, 1.0, norms)
+        vectors.append((pooled / norms).astype(np.float32))
+
+    return np.vstack(vectors)
+
+
+def write_bytes_atomic(path, payload_bytes):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp_name = tempfile.mkstemp(prefix=f".{path.name}.", dir=str(path.parent))
+    try:
+        with os.fdopen(fd, "wb") as handle:
+            handle.write(payload_bytes)
+        os.chmod(tmp_name, 0o644)
+        os.replace(tmp_name, path)
+    except Exception:
+        if os.path.exists(tmp_name):
+            os.unlink(tmp_name)
+        raise
 
 
 def main():
-    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    parser = argparse.ArgumentParser(description="Generate catalog metadata, ONNX search embeddings, and multilingual content similarities.")
+    parser.add_argument("--skip-similarities", action="store_true", help="Only rebuild metadata and ONNX search embeddings.")
+    args = parser.parse_args()
 
     koha_books = load_koha_books()
-    descriptions = load_koha_descriptions()
+    descriptions = load_descriptions_from_mapping()
+    auth_df = compute_authority_frequencies(koha_books)
+    print(f"Loaded {len(koha_books)} unique books and {len(descriptions)} Spanish descriptions.")
 
-    # Build per-book metadata + texts in a stable order.
     book_ids = []
     metadata = {}
     texts = []
     for book in koha_books:
-        bid = book["biblio_id"]
-        if not bid:
-            continue
+        bid = str(book["biblio_id"])
         desc = descriptions.get(bid, "")
         book_ids.append(bid)
         metadata[bid] = {
@@ -104,76 +254,51 @@ def main():
             "author": book.get("author", ""),
             "description": desc,
         }
-        texts.append(build_text(book, desc))
+        texts.append(build_text(book, desc, authority_df=auth_df))
 
-    if MODEL_REVISION:
-        rev_label = f"@{MODEL_REVISION[:7]}"
-        model_kwargs = { "revision": MODEL_REVISION }
-    else:
-        rev_label = " (latest)"
-        model_kwargs = {}
-    print(f"Embedding {len(texts)} books with {MODEL_NAME}{rev_label}...")
-    model = sentence_transformers.SentenceTransformer(MODEL_NAME, **model_kwargs)
-    embeddings = model.encode(
-        texts,
-        show_progress_bar=True,
-        convert_to_numpy=True,
-        normalize_embeddings=True,  # unit-length so dot product == cosine
+    write_json_atomic(BOOK_METADATA_PATH, metadata)
+    print(f"Saved metadata ({len(metadata)} books) -> {BOOK_METADATA_PATH}")
+
+    print(f"Encoding {len(texts)} runtime search embeddings with {ONNX_DIR}...")
+    import numpy as np
+
+    online_embeddings = encode_with_onnx(texts)
+    assert online_embeddings.shape == (len(book_ids), EMBEDDING_DIM)
+    assert not np.isnan(online_embeddings).any(), "NaN in ONNX embeddings"
+
+    write_bytes_atomic(EMBEDDINGS_BIN_PATH, online_embeddings.astype(np.float32).tobytes(order="C"))
+    write_json_atomic(
+        EMBEDDINGS_INDEX_PATH,
+        {
+            "model": ONLINE_MODEL_NAME,
+            "revision": ONLINE_MODEL_REVISION,
+            "dim": EMBEDDING_DIM,
+            "count": len(book_ids),
+            "book_ids": book_ids,
+        },
+        indent=None,
     )
+    print(f"Saved ONNX-aligned embeddings -> {EMBEDDINGS_BIN_PATH}")
 
-    with open(METADATA_FILE, "w", encoding="utf-8") as f:
-        json.dump(metadata, f, indent=2, ensure_ascii=False)
-    print(f"Saved metadata to {METADATA_FILE}")
+    if not args.skip_similarities:
+        import sentence_transformers
 
-    np.savez_compressed(
-        EMBEDDINGS_FILE,
-        book_ids=np.array(book_ids),
-        embeddings=embeddings.astype(np.float32),
-    )
-    print(f"Saved embeddings to {EMBEDDINGS_FILE} (shape={embeddings.shape}, dtype=float32)")
-
-    # Also write a flat little-endian float32 blob + JSON index so the
-    # Rails import task can read row N at offset N*dim*4 without
-    # needing numpy. Same vector data, just two redundant formats.
-    with open(EMBEDDINGS_BIN_FILE, "wb") as f:
-        f.write(embeddings.astype(np.float32).tobytes(order="C"))
-    with open(EMBEDDINGS_INDEX_FILE, "w", encoding="utf-8") as f:
-        json.dump(
-            {
-                "model": MODEL_NAME,
-                "revision": MODEL_REVISION,
-                "dim": EMBEDDING_DIM,
-                "count": len(book_ids),
-                "book_ids": book_ids,
-            },
-            f,
-            ensure_ascii=False,
+        print(f"Encoding {len(texts)} multilingual vectors with {SIMILARITY_MODEL_NAME}@{SIMILARITY_MODEL_REVISION[:7]}...")
+        sim_model = sentence_transformers.SentenceTransformer(
+            SIMILARITY_MODEL_NAME,
+            revision=SIMILARITY_MODEL_REVISION,
         )
-    print(
-        f"Saved Ruby-friendly sidecars: "
-        f"{EMBEDDINGS_BIN_FILE} ({os.path.getsize(EMBEDDINGS_BIN_FILE) / 1024 / 1024:.1f} MB), "
-        f"{EMBEDDINGS_INDEX_FILE}"
-    )
+        sim_embeddings = sim_model.encode(
+            texts,
+            batch_size=64,
+            show_progress_bar=True,
+            convert_to_numpy=True,
+            normalize_embeddings=True,
+        ).astype(np.float32)
 
-    # Precompute the top-50 cosine neighbours per book. Used by the
-    # Rails RecommendationService + BookConnections.
-    print("Precomputing top-50 cosine neighbours per book...")
-    similarity_matrix = np.dot(embeddings, embeddings.T)  # already unit-normalised
-    np.fill_diagonal(similarity_matrix, -np.inf)  # don't recommend self
-
-    content_similarities = {}
-    for i, bid in enumerate(book_ids):
-        top_idx = np.argpartition(-similarity_matrix[i], 50)[:50]
-        top_idx = top_idx[np.argsort(-similarity_matrix[i][top_idx])]
-        content_similarities[bid] = [
-            {"book_id": book_ids[j], "similarity": float(similarity_matrix[i][j])}
-            for j in top_idx
-        ]
-
-    with open(SIMILARITIES_FILE, "w", encoding="utf-8") as f:
-        json.dump(content_similarities, f, indent=2, ensure_ascii=False)
-    print(f"Saved top-50 similarity pairs to {SIMILARITIES_FILE}")
-    print("Embedding pipeline completed successfully!")
+        content_similarities = compute_top_similarities(book_ids, sim_embeddings)
+        write_json_atomic(CONTENT_SIMILARITIES_PATH, content_similarities)
+        print(f"Saved multilingual similarities ({len(content_similarities)} books) -> {CONTENT_SIMILARITIES_PATH}")
 
 
 if __name__ == "__main__":

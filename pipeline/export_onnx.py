@@ -1,106 +1,105 @@
 """
-One-time conversion of the all-MiniLM-L6-v2 PyTorch model into an
-ONNX int8-quantized model that can be loaded by the onnxruntime Ruby
-gem at runtime inside the Rails app.
-
-Run this once after editing the model name / revision in
-pipeline/embed_books.py, and commit the resulting
-data/mini_lm_onnx/ directory. Never run from the Rails server or on
-Render — this is a dev-time step only.
-
-Output layout (committed to the repo):
-  data/mini_lm_onnx/
-    model_quantized.onnx    (~22 MB int8)
-    tokenizer.json          (~3 MB WordPiece vocab)
-    tokenizer_config.json
-    special_tokens_map.json
-    config.json
+One-time export of the online query model to an int8-quantized ONNX artifact
+for Ruby's onnxruntime gem, with post-export FP32-vs-ONNX cosine verification.
 """
 
+import argparse
 import os
+import shutil
 import sys
 
-# Match the name + revision used by embed_books.py so the two pipelines
-# stay in lockstep. Honors the same SENTENCE_TRANSFORMER_REVISION env
-# var.
-MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
-MODEL_REVISION = os.environ.get("SENTENCE_TRANSFORMER_REVISION")
-OUTPUT_DIR = "data/mini_lm_onnx"
+try:
+    from .config import ONNX_DIR, ONNX_MAX_TOKENS, ONLINE_MODEL_NAME, ONLINE_MODEL_REVISION
+except ImportError:
+    from config import ONNX_DIR, ONNX_MAX_TOKENS, ONLINE_MODEL_NAME, ONLINE_MODEL_REVISION
+
+PARITY_PROBES = [
+    "novela mexicana revolucion",
+    "filosofia contemporanea mujeres",
+    "poesia latinoamericana amor",
+]
+
+
+def verify_quantized_parity(fp32_dir, quantized_dir, min_cosine=0.98):
+    import numpy as np
+    import onnxruntime as ort
+    from tokenizers import Tokenizer
+
+    tok = Tokenizer.from_file(str(quantized_dir / "tokenizer.json"))
+    tok.enable_truncation(max_length=ONNX_MAX_TOKENS)
+    tok.enable_padding(pad_id=0, length=ONNX_MAX_TOKENS)
+
+    fp32_sess = ort.InferenceSession(str(fp32_dir / "model.onnx"), providers=["CPUExecutionProvider"])
+    q_sess = ort.InferenceSession(str(quantized_dir / "model_quantized.onnx"), providers=["CPUExecutionProvider"])
+
+    def encode_all(sess):
+        in_names = {i.name for i in sess.get_inputs()}
+        out_names = [o.name for o in sess.get_outputs()]
+        encs = tok.encode_batch(PARITY_PROBES)
+        ids = np.array([e.ids for e in encs], dtype=np.int64)
+        mask = np.array([e.attention_mask for e in encs], dtype=np.int64)
+        feeds = {"input_ids": ids, "attention_mask": mask}
+        if "token_type_ids" in in_names:
+            feeds["token_type_ids"] = np.zeros_like(ids, dtype=np.int64)
+        out = sess.run(out_names, feeds)[0]
+        exp = np.expand_dims(mask, -1).astype(np.float32)
+        pooled = np.sum(out * exp, axis=1) / np.clip(np.sum(exp, axis=1), 1e-9, None)
+        return pooled / np.linalg.norm(pooled, axis=1, keepdims=True)
+
+    v_fp32 = encode_all(fp32_sess)
+    v_q = encode_all(q_sess)
+    cosines = np.sum(v_fp32 * v_q, axis=1)
+    mean_cos = float(np.mean(cosines))
+    print(f"FP32 vs INT8 mean cosine across {len(PARITY_PROBES)} probes: {mean_cos:.4f}")
+    if mean_cos < min_cosine:
+        raise RuntimeError(f"Quantization parity below threshold ({mean_cos:.4f} < {min_cosine})")
 
 
 def main():
+    parser = argparse.ArgumentParser(description="Export online query model to quantized ONNX.")
+    parser.add_argument("--quant-target", choices=("avx2", "avx512_vnni", "arm64"), default="avx2")
+    args = parser.parse_args()
+
     try:
-        from optimum.onnxruntime import ORTModelForFeatureExtraction
+        from optimum.onnxruntime import ORTModelForFeatureExtraction, ORTQuantizer
+        from optimum.onnxruntime.configuration import AutoQuantizationConfig
         from transformers import AutoTokenizer
     except ImportError:
         print(
-            "ERROR: optimum + onnxruntime are required for this one-time conversion.\n"
-            "       pip install 'optimum[onnxruntime]' onnx",
+            "ERROR: optimum + onnxruntime + transformers are required.\n"
+            "       pip install -r requirements-export.txt",
             file=sys.stderr,
         )
         sys.exit(1)
 
-    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    ONNX_DIR.mkdir(parents=True, exist_ok=True)
+    fp32_dir = ONNX_DIR.with_suffix(".fp32")
+    if fp32_dir.exists():
+        shutil.rmtree(fp32_dir)
 
-    if MODEL_REVISION:
-        rev_label = f"@{MODEL_REVISION[:7]}"
-        load_kwargs = { "revision": MODEL_REVISION }
-    else:
-        rev_label = " (latest)"
-        load_kwargs = {}
-    print(f"Loading {MODEL_NAME}{rev_label} and exporting to ONNX...")
+    print(f"Exporting {ONLINE_MODEL_NAME}@{ONLINE_MODEL_REVISION[:7]} to ONNX...")
     model = ORTModelForFeatureExtraction.from_pretrained(
-        MODEL_NAME,
+        ONLINE_MODEL_NAME,
         export=True,
-        **load_kwargs,
+        revision=ONLINE_MODEL_REVISION,
     )
-    # Save the unquantized model first, then quantize in place. The
-    # quantizer needs a non-optimized model to start from, and the
-    # intermediate fp32 file is ~88 MB which is uncomfortable to
-    # commit to git (close to GitHub's 100 MB cap). The int8 version
-    # is ~22 MB and is what the Rails app actually loads.
-    unquantized_dir = OUTPUT_DIR + ".fp32"
-    model.save_pretrained(unquantized_dir)
+    model.save_pretrained(fp32_dir)
 
-    print("Saving tokenizer files alongside the ONNX model...")
-    tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME, **load_kwargs)
-    tokenizer.save_pretrained(unquantized_dir)
+    tokenizer = AutoTokenizer.from_pretrained(ONLINE_MODEL_NAME, revision=ONLINE_MODEL_REVISION)
+    tokenizer.save_pretrained(fp32_dir)
 
-    print("Applying dynamic int8 quantization...")
-    try:
-        from optimum.onnxruntime import ORTQuantizer
-        from optimum.onnxruntime.configuration import AutoQuantizationConfig
-    except ImportError:
-        print(
-            "ERROR: optimum.onnxruntime.quantization not available. "
-            "Install with: pip install 'optimum[onnxruntime]' onnx",
-            file=sys.stderr,
-        )
-        sys.exit(1)
+    quantizer = ORTQuantizer.from_pretrained(fp32_dir)
+    config_factory = getattr(AutoQuantizationConfig, args.quant_target)
+    qconfig = config_factory(is_static=False, per_channel=True)
+    quantizer.quantize(quantization_config=qconfig, save_dir=ONNX_DIR)
 
-    quantizer = ORTQuantizer.from_pretrained(unquantized_dir)
-    qconfig = AutoQuantizationConfig.avx512_vnni(is_static=False, per_channel=False) \
-        if hasattr(AutoQuantizationConfig, "avx512_vnni") \
-        else AutoQuantizationConfig.arm64(is_static=False, per_channel=False) \
-        if hasattr(AutoQuantizationConfig, "arm64") \
-        else AutoQuantizationConfig.avx2(is_static=False, per_channel=False)
-    quantizer.quantize(quantization_config=qconfig, save_dir=OUTPUT_DIR)
+    for fname in os.listdir(fp32_dir):
+        if fname.startswith("tokenizer") or fname in ("special_tokens_map.json", "vocab.txt"):
+            shutil.move(str(fp32_dir / fname), str(ONNX_DIR / fname))
 
-    # Move the tokenizer files into the quantized output dir.
-    import shutil
-    for fname in os.listdir(unquantized_dir):
-        if fname.startswith("tokenizer") or fname == "special_tokens_map.json" or fname == "vocab.txt":
-            shutil.move(os.path.join(unquantized_dir, fname),
-                        os.path.join(OUTPUT_DIR, fname))
-
-    import shutil as _shutil
-    _shutil.rmtree(unquantized_dir, ignore_errors=True)
-
-    print(f"Done. ONNX artifacts written to {OUTPUT_DIR}/")
-    for f in sorted(os.listdir(OUTPUT_DIR)):
-        full = os.path.join(OUTPUT_DIR, f)
-        size = os.path.getsize(full)
-        print(f"  {f:40s} {size / 1024:.1f} KB")
+    verify_quantized_parity(fp32_dir, ONNX_DIR)
+    shutil.rmtree(fp32_dir, ignore_errors=True)
+    print(f"ONNX artifacts written cleanly to {ONNX_DIR}/")
 
 
 if __name__ == "__main__":

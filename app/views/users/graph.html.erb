@@ -1,19 +1,19 @@
 <% content_for :title, "Grafo de Red de #{@patron.name} - Jardín LAC Vizcaínas" %>
 
-<div style="margin-bottom:1.5rem; display:flex; justify-content:space-between; align-items:center;">
-  <a href="<%= user_path(@patron.id) %>" class="btn btn-secondary" style="padding:0.4rem 0.8rem; font-size:0.85rem; font-weight:600;">
-    <i class="fa-solid fa-arrow-left"></i> Volver a Recomendaciones
-  </a>
+<div class="page-actions-bar">
+  <%= link_to user_path(@patron.id), class: "btn btn-secondary back-nav-btn" do %>
+    <i class="fa-solid fa-arrow-left" aria-hidden="true"></i> Volver a Recomendaciones
+  <% end %>
 </div>
 
-<div class="glass-card" style="margin-bottom:1.5rem;">
-  <div style="display:flex; align-items:center; gap:1rem;">
-    <i class="fa-solid fa-diagram-project" style="font-size:2rem; color:var(--color-accent);"></i>
+<div class="glass-card graph-hero-card">
+  <div class="graph-hero-header">
+    <i class="fa-solid fa-diagram-project graph-hero-icon graph-hero-icon--accent" aria-hidden="true"></i>
     <div>
-      <h1 style="font-family:var(--font-display); font-size:1.75rem; font-weight:700; margin:0; color:var(--text-primary);">
+      <h1 class="graph-hero-title">
         Grafo de Afinidad y Red de Lectura: <%= @patron.name %>
       </h1>
-      <p style="font-size:0.85rem; color:var(--text-secondary); margin-top:0.2rem;">
+      <p class="graph-hero-subtitle">
         Visualización topológica interactiva de lectores afines, préstamos compartidos y recomendaciones colaborativas.
       </p>
     </div>
@@ -21,42 +21,58 @@
   <div class="graph-help-row">
     <span class="graph-help-chip"><i class="fa-solid fa-hand-pointer" aria-hidden="true"></i> Arrastra nodos</span>
     <span class="graph-help-chip"><i class="fa-solid fa-magnifying-glass-plus" aria-hidden="true"></i> Rueda para zoom</span>
-    <span class="graph-help-chip"><i class="fa-solid fa-circle-info" aria-hidden="true"></i> Clic para detalles</span>
+    <span class="graph-help-chip"><i class="fa-solid fa-circle-info" aria-hidden="true"></i> Clic o Enter para detalles</span>
   </div>
 </div>
 
 <div class="graph-split" data-controller="d3-user-graph" data-d3-user-graph-url-value="<%= api_user_graph_path(@patron.id) %>">
-  <!-- D3 Canvas Card -->
-  <div class="glass-card" style="padding:0; position:relative; overflow:hidden; min-height:550px; display:flex; flex-direction:column;">
+  <div class="glass-card graph-canvas-card">
+    <div class="graph-toolbar" role="toolbar" aria-label="Controles de zoom del grafo">
+      <button type="button"
+              class="btn btn-secondary btn-compact graph-zoom-btn"
+              data-action="click->d3-user-graph#zoomIn"
+              data-d3-user-graph-target="zoomControl"
+              aria-label="Acercar grafo"
+              title="Acercar">+</button>
+      <button type="button"
+              class="btn btn-secondary btn-compact graph-zoom-btn"
+              data-action="click->d3-user-graph#zoomOut"
+              data-d3-user-graph-target="zoomControl"
+              aria-label="Alejar grafo"
+              title="Alejar">-</button>
+      <button type="button"
+              class="btn btn-secondary btn-compact graph-zoom-btn"
+              data-action="click->d3-user-graph#resetZoom"
+              data-d3-user-graph-target="zoomControl">Restablecer</button>
+    </div>
+
     <div class="graph-loading-state" data-d3-user-graph-target="loading">
       <i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i>
       <span>Cargando grafo…</span>
     </div>
-    <div id="graph-container" data-d3-user-graph-target="container" style="width:100%; height:550px; background:var(--bg-primary);"></div>
-    
-    <!-- Legend Footer -->
-    <div class="graph-legend" style="padding:0.75rem 1.25rem; background:white; border-top:1px solid var(--border-light); display:flex; gap:1.25rem; flex-wrap:wrap; font-size:0.75rem; align-items:center;">
+    <div id="graph-container" class="graph-canvas" data-d3-user-graph-target="container"></div>
+
+    <div class="graph-legend">
       <div class="graph-legend-item">
-        <span style="width:12px; height:12px; border-radius:50%; background:#f43f5e; display:inline-block;"></span> Lector Principal
+        <span class="graph-legend-dot graph-legend-dot--target-user" aria-hidden="true"></span> Lector Principal
       </div>
       <div class="graph-legend-item">
-        <span style="width:10px; height:10px; border-radius:50%; background:#56697a; display:inline-block;"></span> Préstamo Propio
+        <span class="graph-legend-dot graph-legend-dot--target-book" aria-hidden="true"></span> Préstamo Propio
       </div>
       <div class="graph-legend-item">
-        <span style="width:11px; height:11px; border-radius:50%; background:#52755e; display:inline-block;"></span> Lector Afin
+        <span class="graph-legend-dot graph-legend-dot--similar-user" aria-hidden="true"></span> Lector Afín
       </div>
       <div class="graph-legend-item">
-        <span style="width:9px; height:9px; border-radius:50%; background:#b38f4d; display:inline-block;"></span> Recomendación Colaborativa
+        <span class="graph-legend-dot graph-legend-dot--collab-book" aria-hidden="true"></span> Recomendación Colaborativa
       </div>
     </div>
   </div>
 
-  <!-- Side Inspector Panel -->
-  <div class="glass-card" data-d3-user-graph-target="panel" style="overflow-y:auto; max-height:600px;">
-    <div style="text-align:center; padding:4rem 1.5rem; color:var(--text-secondary);">
-      <i class="fa-solid fa-hand-pointer" style="font-size:2.5rem; color:var(--text-muted); opacity:0.4; margin-bottom:0.75rem;"></i>
-      <p style="font-size:1rem; font-weight:600;">Selecciona un nodo del grafo</p>
-      <p style="font-size:0.8rem; color:var(--text-muted);">Haz clic en cualquier lector u obra para inspeccionar sus conexiones y métricas.</p>
+  <div class="glass-card graph-panel" data-d3-user-graph-target="panel" aria-live="polite">
+    <div class="graph-panel-placeholder">
+      <i class="fa-solid fa-hand-pointer" aria-hidden="true"></i>
+      <p class="graph-panel-placeholder-title">Selecciona un nodo del grafo</p>
+      <p class="graph-panel-placeholder-copy">Haz clic en cualquier lector u obra para inspeccionar sus conexiones y métricas.</p>
     </div>
   </div>
 </div>

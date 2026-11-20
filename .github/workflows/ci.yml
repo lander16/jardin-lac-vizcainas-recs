@@ -5,6 +5,13 @@ on:
   push:
     branches: [ main ]
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   scan_ruby:
     runs-on: ubuntu-latest
@@ -20,9 +27,9 @@ jobs:
 
       - name: Scan for common Rails security vulnerabilities using static analysis
         run: bin/brakeman --no-pager
-      
+
       - name: Scan for known security vulnerabilities in gems used
-        run: bin/bundler-audit
+        run: bin/bundler-audit check --update
 
   scan_js:
     runs-on: ubuntu-latest
@@ -65,13 +72,25 @@ jobs:
       - name: Lint code for consistent style
         run: bin/rubocop -f github
 
+  python:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7.0.1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Compile and test data pipeline scripts
+        run: python3 -m py_compile pipeline/*.py pipeline/tests/*.py && python3 -m unittest discover -s pipeline/tests -v
+
   test:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Install packages
-        run: sudo apt-get update && sudo apt-get install --no-install-recommends -y libvips
-
       - name: Checkout code
         uses: actions/checkout@v7.0.1
 
@@ -89,9 +108,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Install packages
-        run: sudo apt-get update && sudo apt-get install --no-install-recommends -y libvips
-
       - name: Checkout code
         uses: actions/checkout@v7.0.1
 
@@ -103,7 +119,7 @@ jobs:
       - name: Prepare database and import deploy data
         env:
           RAILS_ENV: test
-        run: bin/rails db:prepare import:all
+        run: SKIP_SEEDS=1 bin/rails db:prepare && bin/rails import:all
 
       - name: Smoke check imported counts
         env:
@@ -114,7 +130,13 @@ jobs:
               "books" => [Book.count, 100],
               "patrons" => [Patron.count, 100],
               "checkouts" => [Checkout.count, 1000],
-              "content_similarities" => [ContentSimilarity.count, 1000]
+              "authorities" => [Authority.count, 1000],
+              "book_connections" => [BookConnection.count, 100],
+              "content_similarities" => [ContentSimilarity.count, 1000],
+              "user_similarities" => [UserSimilarity.count, 1000],
+              "book_words" => [BookWord.count, 1000],
+              "fts5_rows" => [ActiveRecord::Base.connection.select_value("SELECT COUNT(*) FROM book_words_fts").to_i, 1000],
+              "embeddings" => [Book.where.not(embedding: nil).count, 100]
             }
 
             failures = checks.filter_map do |name, (actual, minimum)|
@@ -124,3 +146,8 @@ jobs:
 
             abort("Import smoke check failed: #{failures.join(", ")}") if failures.any?
           '
+
+      - name: Run live catalog search smoke tests
+        env:
+          RAILS_ENV: test
+        run: RUN_IMPORT_SMOKE=1 bin/rails test test/integration/smoke_search_test.rb

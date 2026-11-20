@@ -1,4 +1,15 @@
+# frozen_string_literal: true
+
 class RecommendationPresenter
+  BADGES = {
+    "content" => { css: "content", text: "Contenido", icon: "fa-solid fa-book" }.freeze,
+    "collaborative" => { css: "collaborative", text: "Lectores Afines", icon: "fa-solid fa-users" }.freeze,
+    "authority" => { css: "authority", text: "Autoridades", icon: "fa-solid fa-tags" }.freeze,
+    "all" => { css: "hybrid", text: "Híbrido", icon: "fa-solid fa-wand-magic-sparkles" }.freeze
+  }.freeze
+
+  DEFAULT_BADGE = { css: "hybrid", text: "Combinado", icon: "fa-solid fa-layer-group" }.freeze
+
   attr_reader :recommendation
 
   def self.wrap(recommendations)
@@ -32,7 +43,8 @@ class RecommendationPresenter
   end
 
   def match_percentage
-    fetch(:match_percentage)
+    val = fetch(:match_percentage)
+    val&.to_i&.clamp(0, 100)
   end
 
   def explanation
@@ -60,32 +72,15 @@ class RecommendationPresenter
   end
 
   def badge_class
-    case primary_source
-    when "content" then "content"
-    when "collaborative" then "collaborative"
-    when "authority" then "authority"
-    else "hybrid"
-    end
+    badge[:css]
   end
 
   def badge_text
-    case primary_source
-    when "content" then "Contenido"
-    when "collaborative" then "Lectores Afines"
-    when "authority" then "Autoridades"
-    when "all" then "Híbrido"
-    else "Combinado"
-    end
+    badge[:text]
   end
 
   def badge_icon
-    case primary_source
-    when "content" then "fa-solid fa-book"
-    when "collaborative" then "fa-solid fa-users"
-    when "authority" then "fa-solid fa-tags"
-    when "all" then "fa-solid fa-wand-magic-sparkles"
-    else "fa-solid fa-layer-group"
-    end
+    badge[:icon]
   end
 
   def [](key)
@@ -106,6 +101,10 @@ class RecommendationPresenter
   end
 
   private
+
+  def badge
+    BADGES.fetch(primary_source, DEFAULT_BADGE)
+  end
 
   def fetch(key)
     if @recommendation.is_a?(Hash)

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class DashboardController < ApplicationController
   def show
     @total_users = Patron.count
@@ -6,7 +8,7 @@ class DashboardController < ApplicationController
 
     @popular_books = Book.joins(:checkouts)
                          .group("books.id")
-                         .order("COUNT(checkouts.id) DESC")
+                         .order(Arel.sql("COUNT(checkouts.id) DESC"))
                          .limit(5)
                          .select("books.id, books.title, COUNT(checkouts.id) AS checkouts_count")
 
@@ -14,11 +16,16 @@ class DashboardController < ApplicationController
   end
 
   def users_search
-    query = params[:q].to_s.strip.downcase
-    @users = if query.present?
-               escaped = "%#{ActiveRecord::Base.sanitize_sql_like(query)}%"
-               Patron.where("LOWER(name) LIKE ? OR LOWER(email) LIKE ? OR cardnumber LIKE ?",
-                            escaped, escaped, escaped)
+    raw_query = params[:q].to_s.strip
+    normalized_query = FuzzyText.normalize_text(raw_query)
+
+    @users = if raw_query.present?
+               raw_like = "%#{ActiveRecord::Base.sanitize_sql_like(raw_query.downcase)}%"
+               name_column = Patron.column_names.include?("normalized_name") ? "normalized_name" : "LOWER(name)"
+               name_pattern = normalized_query.present? ? "%#{ActiveRecord::Base.sanitize_sql_like(normalized_query)}%" : raw_like
+
+               Patron.where("#{name_column} LIKE ? OR LOWER(email) LIKE ? OR LOWER(cardnumber) LIKE ?",
+                            name_pattern, raw_like, raw_like)
                      .order(:name)
     else
                Patron.order(:name)

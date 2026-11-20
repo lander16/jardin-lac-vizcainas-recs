@@ -6,13 +6,13 @@
         <p class="catalog-results-kicker">Búsqueda</p>
         <h3>“<%= query %>”</h3>
       </div>
-      <span class="search-result-count"><%= result_count %> resultado<%= "s" unless result_count == 1 %></span>
+      <span class="search-result-count"><%= pluralize_es(result_count, "resultado", "resultados") %></span>
     <% else %>
       <div>
         <p class="catalog-results-kicker">Selección inicial</p>
         <h3>Libros recientes del acervo</h3>
       </div>
-      <span class="search-result-count"><%= result_count %> resultado<%= "s" unless result_count == 1 %></span>
+      <span class="search-result-count"><%= pluralize_es(result_count, "resultado", "resultados") %></span>
     <% end %>
   </div>
 
@@ -21,7 +21,7 @@
       <div class="empty-state-card">
         <i class="fa-solid fa-building-columns" aria-hidden="true"></i>
         <p class="empty-state-title">No se encontraron resultados.</p>
-        <% if QueryEmbedder.default.available? %>
+        <% if @semantic_search_available %>
           <p class="empty-state-copy">Prueba con un sinónimo, autor, tema o lugar cercano.</p>
         <% else %>
           <p class="empty-state-copy">Intenta ajustar el término de búsqueda.</p>
@@ -40,8 +40,8 @@
         <div class="catalog-book-card" data-search-result-item>
           <div class="catalog-book-header">
             <div class="catalog-book-info">
-              <div style="display:flex; align-items:flex-start; gap:0.5rem; flex-wrap:wrap; margin-bottom:0.3rem;">
-                <a href="<%= book_path(b_id) %>" data-turbo-frame="_top" class="catalog-book-title"><%= b_title %></a>
+              <div class="catalog-book-title-row">
+                <%= link_to b_title, book_path(b_id), data: { turbo_frame: "_top" }, class: "catalog-book-title", title: b_title %>
                 <% if b_score %>
                   <span class="similarity-badge"><%= b_score %> pts</span>
                 <% end %>
@@ -61,14 +61,16 @@
               <% end %>
 
               <% if b_auths.present? %>
-                <div class="catalog-auth-list" style="margin-top:0.6rem;">
+                <div class="catalog-auth-list catalog-auth-list--spaced">
                   <% b_auths.first(5).each do |auth| %>
-                    <span class="catalog-auth-badge clickable-auth-badge">
-                      <i class="fa-solid fa-tag" aria-hidden="true"></i> <%= auth[:name] || auth.name %>
-                    </span>
+                    <% auth_name = auth.respond_to?(:name) ? auth.name : auth[:name] %>
+                    <% next if auth_name.blank? %>
+                    <%= link_to catalog_path(q: auth_name), data: { turbo_frame: "_top" }, class: "catalog-auth-badge" do %>
+                      <i class="fa-solid fa-tag" aria-hidden="true"></i> <%= auth_name %>
+                    <% end %>
                   <% end %>
                   <% if b_auths.size > 5 %>
-                    <span style="font-size:0.72rem; color:var(--text-muted); align-self:center;">
+                    <span class="catalog-auth-more">
                       +<%= b_auths.size - 5 %> más
                     </span>
                   <% end %>
@@ -77,9 +79,9 @@
             </div>
 
             <div class="catalog-book-meta-right">
-              <a href="<%= catalog_graph_path(b_id) %>" data-turbo-frame="_top" class="btn btn-secondary btn-compact">
-                <i class="fa-solid fa-diagram-project"></i> Grafo · <%= b_conns %>
-              </a>
+              <%= link_to catalog_graph_path(b_id), data: { turbo_frame: "_top" }, class: "btn btn-secondary btn-compact" do %>
+                <i class="fa-solid fa-diagram-project" aria-hidden="true"></i> Grafo · <%= b_conns %>
+              <% end %>
             </div>
           </div>
         </div>

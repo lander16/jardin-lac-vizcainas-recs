@@ -50,4 +50,24 @@ class ContentSimilarityTest < ActiveSupport::TestCase
     assert_equal @book, @content_similarity.book
     assert_equal @similar_book, @content_similarity.similar_book
   end
+
+  test "prevents self-referential similarity" do
+    self_ref = ContentSimilarity.new(book: @book, similar_book: @book, similarity: 0.9)
+
+    assert_not self_ref.valid?
+    assert_includes self_ref.errors[:similar_book_id], "cannot be the same as book_id"
+  end
+
+  test "validates similarity is within -1.0 to 1.0" do
+    [ -1.0, 0.0, 1.0 ].each do |valid_sim|
+      cs = ContentSimilarity.new(book: @book, similar_book: @similar_book, similarity: valid_sim)
+      assert cs.valid?, "expected similarity #{valid_sim} to be valid"
+    end
+
+    [ nil, -1.01, 1.01 ].each do |invalid_sim|
+      cs = ContentSimilarity.new(book: @book, similar_book: @similar_book, similarity: invalid_sim)
+      assert_not cs.valid?, "expected similarity #{invalid_sim.inspect} to be invalid"
+      assert_not_empty cs.errors[:similarity]
+    end
+  end
 end

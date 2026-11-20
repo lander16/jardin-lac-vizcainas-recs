@@ -7,16 +7,6 @@ class CatalogSearchServiceTest < ActiveSupport::TestCase
     @book_rulfo  = Book.create!(id: "b12", title: "Pedro Páramo", author: "Juan Rulfo")
   end
 
-  # Build a fake embedder that responds to .available? and .encode.
-  def fake_embedder(available:, vector: nil)
-    fake = Object.new
-    fake.instance_variable_set(:@available, available)
-    fake.instance_variable_set(:@vector, vector)
-    fake.define_singleton_method(:available?) { @available }
-    fake.define_singleton_method(:encode) { |_t| @vector }
-    fake
-  end
-
   test "fuzzy search finds books by author" do
     with_stubbed_class_method(QueryEmbedder, :default, fake_embedder(available: false)) do
       results = CatalogSearchService.search("Hesse")
@@ -342,6 +332,107 @@ class CatalogSearchServiceTest < ActiveSupport::TestCase
                       "the LIKE-exact Shakespeare book must be ranked before " \
                       "the FTS5-fuzzy noise books (the exact tier must win " \
                       "the CANDIDATE_LIMIT ordering)"
+    end
+  end
+
+  test "handles stopword-heavy multi-word title queries accurately" do
+    with_stubbed_class_method(QueryEmbedder, :default, fake_embedder(available: false)) do
+      Book.create!(id: "paz_1", title: "El laberinto de la soledad", author: "Octavio Paz")
+      Book.create!(id: "decoy_1", title: "El arte de la guerra", author: "Sun Tzu")
+
+      results = CatalogSearchService.search("El laberinto de la soledad")
+      ids = results.map { |r| r[:biblio_id] }
+
+      assert_includes ids, "paz_1"
+      assert_not_includes ids, "decoy_1"
+      assert_equal 100.0, results.find { |r| r[:biblio_id] == "paz_1" }[:match_score]
+    end
+  end
+
+  test "accent-folded author queries match identically with and without diacritics" do
+    with_stubbed_class_method(QueryEmbedder, :default, fake_embedder(available: false)) do
+      Book.create!(id: "ggm_1", title: "El otoño del patriarca", author: "Gabriel García Márquez")
+
+      accented = CatalogSearchService.search("García")
+      plain = CatalogSearchService.search("Garcia")
+
+      accented_match = accented.find { |r| r[:biblio_id] == "ggm_1" }
+      plain_match = plain.find { |r| r[:biblio_id] == "ggm_1" }
+
+      assert_not_nil accented_match
+      assert_not_nil plain_match
+      assert_equal accented_match[:match_score], plain_match[:match_score]
+      assert_includes plain_match[:match_explanation], "Coincidencia en autor"
+    end
+  end
+
+  test "does not suppress authority matches for non-author query historia del arte" do
+    with_stubbed_class_method(QueryEmbedder, :default, fake_embedder(available: false)) do
+      title_book = Book.create!(id: "hist_title", title: "Historia del arte", author: "E. H. Gombrich")
+      auth_book = Book.create!(id: "hist_auth", title: "Conceptos fundamentales", author: "Heinrich Wölfflin")
+      authority = Authority.create!(id: "auth_hist_arte", name: "Historia del arte", authority_type: "Tema")
+      BookAuthority.create!(book: auth_book, authority: authority)
+
+      [ title_book, auth_book ].each do |b|
+        FuzzyText.normalize_words(b.title).each { |w| BookWord.create!(book: b, word: w, source: "title") }
+        FuzzyText.normalize_words(b.author).each { |w| BookWord.create!(book: b, word: w, source: "author") }
+      end
+      FuzzyText.normalize_words(authority.name).each do |w|
+        BookWord.create!(book: auth_book, word: w, source: "authority_name")
+      end
+
+      results = CatalogSearchService.search("historia del arte")
+      auth_result = results.find { |r| r[:biblio_id] == "hist_auth" }
+
+      assert_not_nil auth_result
+      assert_includes auth_result[:match_explanation], "Coincidencia en autoridad: 'Historia del arte'"
+    end
+  end
+
+  test "safely executes FTS5 operator and hyphenated queries like NOT and don-quijote" do
+    with_stubbed_class_method(QueryEmbedder, :default, fake_embedder(available: false)) do
+      not_book = Book.create!(id: "fts_not", title: "To Be or Not to Be", author: "Ryan North")
+      quijote_book = Book.create!(id: "fts_quijote", title: "Don Quijote de la Mancha", author: "Miguel de Cervantes")
+
+      [ not_book, quijote_book ].each do |b|
+        FuzzyText.normalize_words(b.title).each { |w| BookWord.create!(book: b, word: w, source: "title") }
+      end
+      FuzzyBookLookup.rebuild_from_book_words!
+
+      assert_includes FuzzyBookLookup.candidate_ids_for_token("NOT"), not_book.id
+      assert_nothing_raised { FuzzyBookLookup.candidate_ids_for_token("don-quijote") }
+
+      not_results = CatalogSearchService.search("NOT")
+      quijote_results = CatalogSearchService.search("don-quijote")
+
+      assert_includes not_results.map { |r| r[:biblio_id] }, not_book.id
+      assert_includes quijote_results.map { |r| r[:biblio_id] }, quijote_book.id
+    end
+  end
+
+  test "scores and explains semantic-only candidates using cosine threshold" do
+    query_vec = Array.new(QueryEmbedder::DIMENSION, 0.0).tap { |v| v[0] = 1.0 }
+    half_vec = Array.new(QueryEmbedder::DIMENSION, 0.0).tap do |v|
+      v[0] = 0.5
+      v[1] = Math.sqrt(0.75)
+    end
+    below_threshold_vec = Array.new(QueryEmbedder::DIMENSION, 0.0).tap do |v|
+      v[0] = 0.3
+      v[1] = Math.sqrt(0.91)
+    end
+
+    with_stubbed_class_method(QueryEmbedder, :default, fake_embedder(available: true, vector: query_vec)) do
+      @book_hesse1.update!(embedding: half_vec.pack("e*"), embedding_model: "test")
+      @book_hesse2.update!(embedding: below_threshold_vec.pack("e*"), embedding_model: "test")
+
+      results = CatalogSearchService.search("astronomia botánica", limit: 10)
+      match = results.find { |r| r[:biblio_id] == @book_hesse1.id }
+
+      assert_not_nil match
+      assert_nil results.find { |r| r[:biblio_id] == @book_hesse2.id }
+      assert_in_delta 42.5, match[:match_score], 0.1
+      assert_in_delta 0.5, match[:semantic_score], 0.001
+      assert_equal "Coincidencia semántica (coseno 0.5)", match[:match_explanation]
     end
   end
 end

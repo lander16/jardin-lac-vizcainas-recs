@@ -23,5 +23,6 @@ module VizcainasRecomendaciones
     #
     # Configure custom exceptions app for user-friendly error pages
     config.exceptions_app = self.routes
+    config.active_storage.variant_processor = :disabled
   end
 end

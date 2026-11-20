@@ -8,6 +8,20 @@
 module FuzzyText
   module_function
 
+  SPANISH_STOPWORDS = %w[
+    el la los las un una unos unas de del al en con por para sin sobre entre
+    hacia hasta desde y o u e a que como su sus se lo le les es son fue ser ha han
+  ].to_set.freeze
+
+  def normalize_text(raw)
+    return "" if raw.blank?
+
+    I18n.transliterate(raw.to_s.downcase)
+        .gsub(/[^a-z0-9\s]/, " ")
+        .squeeze(" ")
+        .strip
+  end
+
   # Lowercases, strips diacritics, keeps only [a-z0-9], and drops
   # tokens shorter than 3 chars. Returns nil when nothing survives.
   def normalize_word(raw)
@@ -20,9 +34,7 @@ module FuzzyText
 
   # Splits a string into normalized words >= 3 chars, deduped, order preserved.
   def normalize_words(raw)
-    return [] if raw.blank?
-
-    raw.to_s.split(/\s+/).filter_map { |w| normalize_word(w) }.uniq
+    normalize_text(raw).split(" ").select { |w| w.length >= 3 }.uniq
   end
 
   # Returns unique 3-character substrings of text in order.

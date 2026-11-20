@@ -1,8 +1,7 @@
-class ApplicationController < ActionController::Base
-  # Only allow modern browsers supporting webp images, web push, badges, import maps, CSS nesting, and CSS :has.
-  allow_browser versions: :modern
+# frozen_string_literal: true
 
-  # Changes to the importmap will invalidate the etag for HTML responses
+class ApplicationController < ActionController::Base
+  allow_browser versions: :modern
   stale_when_importmap_changes
 
   rescue_from ActiveRecord::RecordNotFound, with: :render_not_found
@@ -13,6 +12,7 @@ class ApplicationController < ActionController::Base
     respond_to do |format|
       format.html { render "errors/not_found", status: :not_found, layout: "application" }
       format.json { render json: { error: "Recurso no encontrado" }, status: :not_found }
+      format.any { head :not_found }
     end
   end
 end

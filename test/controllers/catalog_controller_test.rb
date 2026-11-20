@@ -94,4 +94,73 @@ class CatalogControllerTest < ActionDispatch::IntegrationTest
     assert books.present?
     assert books.all? { |b| b.is_a?(CatalogBookPresenter) }
   end
+
+  test "authorities_by_type supports slashes in query param" do
+    inst_auth = Authority.create!(
+      id: "auth_inst_1",
+      name: "Colegio de las Vizcaínas",
+      authority_type: "Institución / Organización",
+      books_count: 3
+    )
+
+    get catalog_authorities_by_type_url, params: { type: "Institución / Organización" }
+
+    assert_response :success
+    assert_select "turbo-frame[id='authority-inspector']"
+    assert_select "#authority-inspector-title", text: "Institución / Organización"
+    assert_match inst_auth.name, response.body
+    assert_no_match @authority.name, response.body
+  end
+
+  test "catalog index filters by q param" do
+    other_book = Book.create!(id: "cat_other", title: "Don Quijote", author: "Miguel de Cervantes")
+
+    with_stubbed_class_method(QueryEmbedder, :default, fake_embedder(available: false)) do
+      get catalog_url, params: { q: "Pedro" }
+    end
+
+    assert_response :success
+    assert_select "#catalog-results [data-search-result-item]", count: 1
+    assert_match @book.title, response.body
+    assert_no_match other_book.title, response.body
+  end
+
+  test "catalog search filters by q param and honors limit param" do
+    Book.create!(id: "cat_pedro_2", title: "Pedro y el lobo", author: "Sergei Prokofiev")
+    other_book = Book.create!(id: "cat_quijote", title: "Don Quijote", author: "Miguel de Cervantes")
+
+    with_stubbed_class_method(QueryEmbedder, :default, fake_embedder(available: false)) do
+      get catalog_search_url, params: { q: "Pedro" }
+      assert_response :success
+      assert_select "[data-search-result-item]", count: 2
+      assert_match @book.title, response.body
+      assert_no_match other_book.title, response.body
+
+      get catalog_search_url, params: { q: "Pedro", limit: 1 }
+      assert_response :success
+      assert_select "[data-search-result-item]", count: 1
+    end
+  end
+
+  test "catalog search defaults safely when limit param is invalid" do
+    Book.create!(id: "cat_extra_1", title: "Aura", author: "Carlos Fuentes")
+    Book.create!(id: "cat_extra_2", title: "El llano en llamas", author: "Juan Rulfo")
+
+    with_stubbed_class_method(QueryEmbedder, :default, fake_embedder(available: false)) do
+      get catalog_search_url, params: { limit: "abc" }
+    end
+
+    assert_response :success
+    assert_select "[data-search-result-item]", count: 3
+  end
+
+  test "catalog renders authority dialog inside modal controller without inline JS handlers" do
+    get catalog_url
+
+    assert_response :success
+    assert_select '[data-controller="modal"] dialog#authority-inspector-modal', count: 1
+    assert_select "dialog", count: 1
+    assert_select "[onclick], [onchange], [oninput], [onsubmit], [onmouseover], [onmouseout]", count: 0
+    assert_no_match(/\s+on(?:click|change|input|submit|mouseover|mouseout)\s*=/i, response.body)
+  end
 end

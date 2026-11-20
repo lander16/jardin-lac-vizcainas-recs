@@ -1,34 +1,43 @@
-<%= turbo_frame_tag "users-table", tag: "tbody", data: { search_target: "frame" } do %>
-  <% if users.empty? %>
-    <tr>
-      <td class="no-label" colspan="5" style="text-align:center;color:var(--text-secondary);padding:2rem;width:100%;">
-        No se encontraron lectores.
-      </td>
-    </tr>
-  <% else %>
-    <% users.each do |user| %>
-      <tr data-search-result-item>
-        <td>
-          <a href="<%= user_path(user.id) %>" data-turbo-frame="_top" style="color:var(--text-primary); font-weight:600; text-decoration:none;">
-            <%= user.name %>
-          </a>
-        </td>
-        <td style="font-family:monospace; color:var(--text-secondary);"><%= user.cardnumber %></td>
-        <td style="color:var(--text-secondary);"><%= user.email %></td>
-        <td class="text-center" style="font-weight:600; font-family:var(--font-display); font-size:1.1rem;">
-          <%= user.checkouts_count %>
-        </td>
-        <td class="text-right">
-          <div class="table-actions">
-            <a href="<%= user_path(user.id) %>" data-turbo-frame="_top" class="btn btn-primary btn-compact">
-              Recomendar
-            </a>
-            <a href="<%= user_graph_path(user.id) %>" data-turbo-frame="_top" class="btn btn-secondary btn-compact">
-              Grafo
-            </a>
-          </div>
-        </td>
-      </tr>
-    <% end %>
-  <% end %>
+<%= turbo_frame_tag "users-table", data: { search_target: "frame" } do %>
+  <div class="table-wrapper">
+    <table>
+      <thead>
+        <tr>
+          <th>Nombre</th>
+          <th>Credencial</th>
+          <th>Correo Electrónico</th>
+          <th class="text-center">Préstamos</th>
+          <th class="text-right">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if users.empty? %>
+          <tr>
+            <td class="no-label table-empty-cell" colspan="5">
+              No se encontraron lectores.
+            </td>
+          </tr>
+        <% else %>
+          <% users.each do |user| %>
+            <tr data-search-result-item>
+              <td>
+                <%= link_to user.name, user_path(user.id), data: { turbo_frame: "_top" }, class: "user-name-link", title: user.name %>
+              </td>
+              <td class="user-cardnumber"><%= user.cardnumber %></td>
+              <td class="user-email"><%= user.email %></td>
+              <td class="text-center user-checkouts-count">
+                <%= number_with_delimiter(user.checkouts_count) %>
+              </td>
+              <td class="text-right">
+                <div class="table-actions">
+                  <%= link_to "Recomendar", user_path(user.id), data: { turbo_frame: "_top" }, class: "btn btn-primary btn-compact" %>
+                  <%= link_to "Grafo", user_graph_path(user.id), data: { turbo_frame: "_top" }, class: "btn btn-secondary btn-compact" %>
+                </div>
+              </td>
+            </tr>
+          <% end %>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
 <% end %>

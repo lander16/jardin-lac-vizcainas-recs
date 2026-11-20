@@ -1,82 +1,173 @@
 import { Controller } from "@hotwired/stimulus"
 
+const DEFAULT_PERCENTAGES = [33, 33, 34]
+
+function allocateLargestRemainder(rawWeights, targetSum = 100) {
+  const total = rawWeights.reduce((acc, value) => acc + Math.max(0, value), 0)
+  const exact = total > 0
+    ? rawWeights.map((value) => (Math.max(0, value) / total) * targetSum)
+    : rawWeights.map(() => targetSum / rawWeights.length)
+
+  const floors = exact.map((value) => Math.floor(value))
+  const remaining = targetSum - floors.reduce((acc, value) => acc + value, 0)
+
+  const order = exact
+    .map((value, index) => ({ index, frac: value - floors[index] }))
+    .sort((a, b) => b.frac - a.frac)
+
+  for (let i = 0; i < remaining; i++) {
+    floors[order[i].index] += 1
+  }
+  return floors
+}
+
+export function rebalancePercentages(rawWeights, changedIndex = -1) {
+  if (changedIndex < 0 || changedIndex >= rawWeights.length) {
+    return allocateLargestRemainder(rawWeights, 100)
+  }
+
+  const fixedPct = Math.max(0, Math.min(100, Math.round(rawWeights[changedIndex] * 100)))
+  const remaining = 100 - fixedPct
+  const otherIndices = rawWeights.map((_, index) => index).filter((index) => index !== changedIndex)
+  const otherAllocated = allocateLargestRemainder(
+    otherIndices.map((index) => rawWeights[index]),
+    remaining
+  )
+
+  const result = new Array(rawWeights.length)
+  result[changedIndex] = fixedPct
+  otherIndices.forEach((index, pos) => {
+    result[index] = otherAllocated[pos]
+  })
+  return result
+}
+
 export default class extends Controller {
   static targets = [
     "contentSlider", "collabSlider", "authSlider",
-    "contentVal", "collabVal", "authVal"
+    "contentVal", "collabVal", "authVal", "status"
   ]
   static values = { url: String }
 
   connect() {
     this.timeout = null
+
+    const frame = this.recommendationsFrame
+    if (frame) {
+      frame.addEventListener("turbo:frame-load", this.onFrameLoad)
+      frame.addEventListener("turbo:fetch-request-error", this.onFrameError)
+      frame.addEventListener("turbo:frame-missing", this.onFrameError)
+    }
+
+    const initial = rebalancePercentages(this.rawSliderValues)
+    this.syncUi(initial)
+  }
+
+  disconnect() {
+    clearTimeout(this.timeout)
+    const frame = this.recommendationsFrame
+    if (frame) {
+      frame.removeEventListener("turbo:frame-load", this.onFrameLoad)
+      frame.removeEventListener("turbo:fetch-request-error", this.onFrameError)
+      frame.removeEventListener("turbo:frame-missing", this.onFrameError)
+    }
   }
 
   update(event) {
-    const changed = event.target
-    let c = parseFloat(this.contentSliderTarget.value)
-    let l = parseFloat(this.collabSliderTarget.value)
-    let a = parseFloat(this.authSliderTarget.value)
+    const changedIndex = this.sliders.indexOf(event.target)
+    const percentages = rebalancePercentages(this.rawSliderValues, changedIndex)
+    this.applyWeights(percentages, { immediate: false })
+  }
 
-    if (changed === this.contentSliderTarget) {
-      const rem = 1.0 - c
-      const sumOther = l + a
-      if (sumOther > 0) {
-        l = (l / sumOther) * rem
-        a = (a / sumOther) * rem
-      } else {
-        l = rem / 2.0
-        a = rem / 2.0
-      }
-    } else if (changed === this.collabSliderTarget) {
-      const rem = 1.0 - l
-      const sumOther = c + a
-      if (sumOther > 0) {
-        c = (c / sumOther) * rem
-        a = (a / sumOther) * rem
-      } else {
-        c = rem / 2.0
-        a = rem / 2.0
-      }
-    } else if (changed === this.authSliderTarget) {
-      const rem = 1.0 - a
-      const sumOther = c + l
-      if (sumOther > 0) {
-        c = (c / sumOther) * rem
-        l = (l / sumOther) * rem
-      } else {
-        c = rem / 2.0
-        l = rem / 2.0
-      }
-    }
+  reset() {
+    this.applyWeights(DEFAULT_PERCENTAGES, { immediate: true })
+  }
 
-    this.contentSliderTarget.value = c.toFixed(2)
-    this.collabSliderTarget.value = l.toFixed(2)
-    this.authSliderTarget.value = a.toFixed(2)
+  get sliders() {
+    return [this.contentSliderTarget, this.collabSliderTarget, this.authSliderTarget]
+  }
 
-    // Clamp any floating-point drift so the three weights always sum to exactly 1.0.
-    const total = c + l + a
-    if (total > 0 && total !== 1.0) {
-      c /= total; l /= total; a /= total
-      this.contentSliderTarget.value = c.toFixed(2)
-      this.collabSliderTarget.value = l.toFixed(2)
-      this.authSliderTarget.value = a.toFixed(2)
-    }
+  get displays() {
+    return [this.contentValTarget, this.collabValTarget, this.authValTarget]
+  }
 
-    this.contentValTarget.textContent = `${Math.round(c * 100)}%`
-    this.collabValTarget.textContent = `${Math.round(l * 100)}%`
-    this.authValTarget.textContent = `${Math.round(a * 100)}%`
+  get rawSliderValues() {
+    return this.sliders.map((slider) => {
+      const parsed = parseFloat(slider.value)
+      return Number.isFinite(parsed) ? Math.max(0, parsed) : 0
+    })
+  }
+
+  get recommendationsFrame() {
+    return document.getElementById("recommendations-list")
+  }
+
+  syncUi(percentages) {
+    percentages.forEach((pct, index) => {
+      this.sliders[index].value = (pct / 100).toFixed(2)
+      this.sliders[index].setAttribute("aria-valuetext", `${pct}%`)
+      this.displays[index].textContent = `${pct}%`
+    })
+  }
+
+  applyWeights(percentages, { immediate }) {
+    this.syncUi(percentages)
 
     clearTimeout(this.timeout)
-    this.timeout = setTimeout(() => {
-      const url = new URL(this.urlValue, window.location.origin)
-      url.searchParams.set("w_content", c.toFixed(2))
-      url.searchParams.set("w_collab", l.toFixed(2))
-      url.searchParams.set("w_auth", a.toFixed(2))
-
-      const frame = document.getElementById("recommendations-list")
-      if (frame) {
-        frame.src = url.toString()
+    const dispatch = () => {
+      const [pctC, pctL, pctA] = percentages
+      const weights = {
+        w_content: (pctC / 100).toFixed(2),
+        w_collab: (pctL / 100).toFixed(2),
+        w_auth: (pctA / 100).toFixed(2)
       }
-    }, 250)
+
+      const pageUrl = new URL(window.location.href)
+      Object.entries(weights).forEach(([key, val]) => pageUrl.searchParams.set(key, val))
+      window.history.replaceState(null, "", pageUrl.toString())
+
+      const frame = this.recommendationsFrame
+      if (!frame) return
+
+      const frameUrl = new URL(this.urlValue, window.location.origin)
+      Object.entries(weights).forEach(([key, val]) => frameUrl.searchParams.set(key, val))
+
+      if (this.hasStatusTarget) {
+        this.statusTarget.textContent = ""
+        this.statusTarget.hidden = true
+      }
+
+      if (frame.src === frameUrl.toString()) {
+        frame.removeAttribute("aria-busy")
+        return
+      }
+
+      frame.setAttribute("aria-busy", "true")
+      frame.src = frameUrl.toString()
+    }
+
+    if (immediate) {
+      dispatch()
+    } else {
+      this.timeout = setTimeout(dispatch, 250)
+    }
+  }
+
+  onFrameLoad = () => {
+    const frame = this.recommendationsFrame
+    if (frame) frame.removeAttribute("aria-busy")
+  }
+
+  onFrameError = (event) => {
+    if (event.type === "turbo:frame-missing") {
+      event.preventDefault()
+    }
+    const frame = this.recommendationsFrame
+    if (frame) frame.removeAttribute("aria-busy")
+
+    if (this.hasStatusTarget) {
+      this.statusTarget.textContent = "No se pudieron actualizar las recomendaciones. Intenta de nuevo."
+      this.statusTarget.hidden = false
+    }
   }
 }

@@ -2,7 +2,11 @@ import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
   static targets = ["input", "frame", "status", "clear"]
-  static values = { url: String }
+  static values = {
+    url: String,
+    singular: { type: String, default: "resultado" },
+    plural: { type: String, default: "resultados" }
+  }
 
   connect() {
     this.timeout = null
@@ -10,44 +14,80 @@ export default class extends Controller {
 
     if (this.hasFrameTarget) {
       this.frameTarget.addEventListener("turbo:frame-load", this.onFrameLoad)
+      this.frameTarget.addEventListener("turbo:fetch-request-error", this.onFetchError)
+      this.frameTarget.addEventListener("turbo:frame-missing", this.onFetchError)
     }
   }
 
   disconnect() {
+    clearTimeout(this.timeout)
     if (this.hasFrameTarget) {
       this.frameTarget.removeEventListener("turbo:frame-load", this.onFrameLoad)
+      this.frameTarget.removeEventListener("turbo:fetch-request-error", this.onFetchError)
+      this.frameTarget.removeEventListener("turbo:frame-missing", this.onFetchError)
     }
   }
 
   input(event) {
-    clearTimeout(this.timeout)
     const query = event.target.value.trim()
+    this.performSearch(query, { immediate: false })
+  }
 
+  submitNow(event) {
+    event.preventDefault()
+    const query = this.hasInputTarget ? this.inputTarget.value.trim() : ""
+    this.performSearch(query, { immediate: true })
+  }
+
+  clear() {
+    if (!this.hasInputTarget) return
+    this.inputTarget.value = ""
+    this.performSearch("", { immediate: true })
+    this.inputTarget.focus()
+  }
+
+  performSearch(query, { immediate }) {
+    clearTimeout(this.timeout)
     this.toggleClearButton(query.length > 0)
 
+    const targetUrl = this.buildUrl(query)
+    if (this.hasFrameTarget && this.frameTarget.src === targetUrl) {
+      this.syncFrameState()
+      return
+    }
+
     if (this.hasStatusTarget) {
-      this.statusTarget.textContent = query.length > 0 ? "Buscando…" : "Mostrando resultados"
+      this.statusTarget.textContent = query.length > 0 ? "Buscando…" : "Mostrando resultados…"
     }
 
     if (this.hasFrameTarget) {
       this.frameTarget.setAttribute("aria-busy", "true")
     }
 
-    this.timeout = setTimeout(() => {
-      const url = new URL(this.urlValue, window.location.origin)
-      url.searchParams.set("q", query)
-
-      if (this.hasFrameTarget) {
-        this.frameTarget.src = url.toString()
+    const execute = () => {
+      if (!this.hasFrameTarget) return
+      if (this.frameTarget.src === targetUrl) {
+        this.syncFrameState()
+        return
       }
-    }, 300)
+      this.frameTarget.src = targetUrl
+    }
+
+    if (immediate) {
+      execute()
+    } else {
+      this.timeout = setTimeout(execute, 300)
+    }
   }
 
-  clear() {
-    if (!this.hasInputTarget) return
-    this.inputTarget.value = ""
-    this.input({ target: this.inputTarget })
-    this.inputTarget.focus()
+  buildUrl(query) {
+    const url = new URL(this.urlValue, window.location.origin)
+    if (query.length > 0) {
+      url.searchParams.set("q", query)
+    } else {
+      url.searchParams.delete("q")
+    }
+    return url.toString()
   }
 
   syncFrameState() {
@@ -55,13 +95,28 @@ export default class extends Controller {
 
     const query = this.hasInputTarget ? this.inputTarget.value.trim() : ""
     const count = this.countResults()
-    this.statusTarget.textContent = query.length > 0 ? `${count} resultado${count === 1 ? "" : "s"} para “${query}”` : `Mostrando ${count} resultado${count === 1 ? "" : "s"}`
+    const unit = count === 1 ? this.singularValue : this.pluralValue
+    this.statusTarget.textContent = query.length > 0
+      ? `${count} ${unit} para "${query}"`
+      : `Mostrando ${count} ${unit}`
     this.toggleClearButton(query.length > 0)
     this.frameTarget.removeAttribute("aria-busy")
   }
 
   onFrameLoad = () => {
     this.syncFrameState()
+  }
+
+  onFetchError = (event) => {
+    if (event.type === "turbo:frame-missing") {
+      event.preventDefault()
+    }
+    if (this.hasFrameTarget) {
+      this.frameTarget.removeAttribute("aria-busy")
+    }
+    if (this.hasStatusTarget) {
+      this.statusTarget.textContent = "No se pudo completar la búsqueda. Intenta de nuevo."
+    }
   }
 
   countResults() {

@@ -1,11 +1,16 @@
+# frozen_string_literal: true
+
 class UsersController < ApplicationController
   before_action :set_patron
 
   def show
     @checkouts = @patron.checkouts.includes(:book).order(checkout_date: :desc)
-    @w_content = (params[:w_content] || 0.33).to_f
-    @w_collab = (params[:w_collab] || 0.33).to_f
-    @w_auth = (params[:w_auth] || 0.34).to_f
+    @w_content, @w_collab, @w_auth = RecommendationService.normalize_weights(
+      w_content: params[:w_content],
+      w_collab: params[:w_collab],
+      w_auth: params[:w_auth],
+      alpha: params[:alpha]
+    )
 
     @recommendations = RecommendationPresenter.wrap(
       RecommendationService.new(@patron).recommend(
@@ -20,11 +25,12 @@ class UsersController < ApplicationController
   end
 
   def recommendations_frame
-    # Provide defaults so a direct hit to the frame (e.g. from a bookmark)
-    # still produces sensible results, not a zero-weight ranking.
-    w_content = (params[:w_content] || 0.33).to_f
-    w_collab  = (params[:w_collab]  || 0.33).to_f
-    w_auth    = (params[:w_auth]    || 0.34).to_f
+    w_content, w_collab, w_auth = RecommendationService.normalize_weights(
+      w_content: params[:w_content],
+      w_collab: params[:w_collab],
+      w_auth: params[:w_auth],
+      alpha: params[:alpha]
+    )
 
     @recommendations = RecommendationPresenter.wrap(
       RecommendationService.new(@patron).recommend(

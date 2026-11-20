@@ -24,25 +24,7 @@ class RestoreRepeatCheckoutsAndAddForeignKeys < ActiveRecord::Migration[8.1]
   end
 
   def down
-    remove_foreign_key :book_words, column: :book_id
-
-    remove_foreign_key :user_similarities, column: :similar_patron_id
-    remove_foreign_key :user_similarities, column: :patron_id
-
-    remove_foreign_key :content_similarities, column: :similar_book_id
-    remove_foreign_key :content_similarities, column: :book_id
-
-    remove_foreign_key :book_connections, column: :target_book_id
-    remove_foreign_key :book_connections, column: :source_book_id
-
-    remove_foreign_key :book_authorities, column: :authority_id
-    remove_foreign_key :book_authorities, column: :book_id
-
-    remove_foreign_key :checkouts, column: :book_id
-    remove_foreign_key :checkouts, column: :patron_id
-
-    remove_index :checkouts, name: "index_checkouts_on_patron_id_and_book_id", if_exists: true
-    add_index :checkouts, [ :patron_id, :book_id ], unique: true
+    raise ActiveRecord::IrreversibleMigration
   end
 
   private

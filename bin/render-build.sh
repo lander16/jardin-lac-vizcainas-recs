@@ -1,29 +1,34 @@
 #!/usr/bin/env bash
-set -e
+set -euo pipefail
+
+echo "=== Configuring Bundler ==="
+bundle config set --local without 'development test'
 
 echo "=== Installing Gems ==="
 bundle install
 
 echo "=== Preparing Database ==="
-bundle exec rails db:prepare
+SKIP_SEEDS=1 bundle exec rails db:prepare
 
-echo "=== Seeding Data from JSON ==="
+echo "=== Importing Data ==="
 bundle exec rails import:all
 
-# Fail loudly if the import didn't actually populate the catalog.
-# On Render free tier the SQLite database is ephemeral, so this is
-# the only signal that the data files made it into the build artifact
-# AND the import task ran to completion. If you see the deploy fail
-# at this line, the data/ directory was likely excluded from the
-# build artifact — check Render's build logs for size or filter
-# warnings.
-BOOK_COUNT=$(bundle exec rails runner 'puts Book.count' 2>/dev/null | tail -1 | tr -dc '0-9')
-if [ -z "$BOOK_COUNT" ] || [ "$BOOK_COUNT" -lt 100 ]; then
-  echo "::error::Book count after import: $BOOK_COUNT (expected >= 100)."
-  echo "::error::The data/ directory was probably not included in the build artifact."
-  exit 1
-fi
-echo "Book count after import: $BOOK_COUNT (OK)"
+# Verify catalog, FTS5 index, and embeddings populated cleanly in the ephemeral SQLite DB.
+bundle exec rails runner '
+  checks = {
+    "books" => [Book.count, 100],
+    "book_words" => [BookWord.count, 1000],
+    "book_words_fts" => [ActiveRecord::Base.connection.select_value("SELECT COUNT(*) FROM book_words_fts").to_i, 1000],
+    "embeddings" => [Book.where.not(embedding: nil).count, 100]
+  }
+
+  failures = checks.filter_map do |name, (actual, minimum)|
+    puts "#{name}: #{actual} (expected >= #{minimum})"
+    "#{name}=#{actual}" if actual < minimum
+  end
+
+  abort("Render build verification failed: #{failures.join(", ")}") if failures.any?
+'
 
 echo "=== Precompiling Assets ==="
 bundle exec rails assets:precompile

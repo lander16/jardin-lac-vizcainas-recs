@@ -32,4 +32,26 @@ class BookWordTest < ActiveSupport::TestCase
     @book_word.save!
     assert_equal @book, @book_word.book
   end
+
+  test "validates source inclusion in allowed sources" do
+    BookWord::SOURCES.each do |allowed_source|
+      bw = BookWord.new(book: @book, word: "palabra", source: allowed_source)
+      assert bw.valid?, "expected source #{allowed_source} to be valid"
+    end
+
+    invalid = BookWord.new(book: @book, word: "palabra", source: "description")
+    assert_not invalid.valid?
+    assert_includes invalid.errors[:source], "is not included in the list"
+  end
+
+  test "validates word uniqueness scoped to book_id and source" do
+    @book_word.save!
+
+    same_source = BookWord.new(book: @book, word: "náhuatl", source: "title")
+    assert_not same_source.valid?
+    assert_includes same_source.errors[:word], "has already been taken"
+
+    different_source = BookWord.new(book: @book, word: "náhuatl", source: "author")
+    assert different_source.valid?
+  end
 end

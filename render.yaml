@@ -4,28 +4,17 @@ services:
     runtime: ruby
     buildCommand: bin/render-build.sh
     startCommand: bundle exec puma -C config/puma.rb
-    disk:
-      name: sqlite-storage
-      mountPath: /opt/render/project/src/storage
-      sizeGB: 1
+    healthCheckPath: /healthz
     envVars:
       - key: RAILS_ENV
         value: production
       - key: SECRET_KEY_BASE
         generateValue: true
-      - key: RAILS_SERVE_STATIC_FILES
-        value: "true"
-      - key: RAILS_LOG_TO_STDOUT
-        value: "true"
-      # Render free tier is 512 MB / 0.1 CPU. The in-memory SymSpellIndex
-      # (~300 MB) has been replaced by a disk-backed SQLite FTS5 trigram
-      # index (book_words_fts, ~1-5 MB RSS), leaving ONNX runtime
-      # (~80 MB) + Rails baseline (~96 MB) as the main consumers. Single
-      # worker + single thread keeps RSS at one copy of the heavy
-      # objects, prevents thread-contention thrashing on the 0.1 CPU,
-      # and leaves generous headroom for transient allocations during
-      # search.
+      # Render free tier is 512 MB / 0.1 CPU. WEB_CONCURRENCY=0 keeps Puma in
+      # single-process mode without a separate worker fork, holding one copy
+      # of the SQLite FTS5 page cache and ONNX runtime while preventing thread
+      # contention at RAILS_MAX_THREADS=1.
       - key: WEB_CONCURRENCY
-        value: "1"
+        value: "0"
       - key: RAILS_MAX_THREADS
         value: "1"

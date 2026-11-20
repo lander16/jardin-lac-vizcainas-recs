@@ -12,9 +12,7 @@
         <div class="glass-card rec-card" data-controller="accordion">
           <div class="rec-header">
             <div class="rec-title-desc">
-              <a href="<%= book_path(rec.book_id) %>" class="rec-title" data-turbo-frame="_top">
-                <%= rec.title %>
-              </a>
+              <%= link_to rec.title, book_path(rec.book_id), class: "rec-title", title: rec.title, data: { turbo_frame: "_top" } %>
               <% if rec.author.present? %>
                 <div class="rec-author"><i class="fa-solid fa-feather" aria-hidden="true"></i> <%= rec.author %></div>
               <% end %>
@@ -44,12 +42,12 @@
                   data-action="click->accordion#toggle"
                   data-accordion-target="button">
             <i class="fa-solid fa-circle-info" aria-hidden="true"></i> ¿Por qué esta sugerencia?
-            <i class="fa-solid fa-chevron-down" data-accordion-target="icon" aria-hidden="true"></i>
+            <i class="fa-solid fa-chevron-down" aria-hidden="true"></i>
           </button>
 
           <div id="<%= rec.accordion_id %>"
                class="explanation-panel"
-               role="region"
+               hidden
                data-accordion-target="panel">
             <%= rec.explanation %>
           </div>

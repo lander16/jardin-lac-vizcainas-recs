@@ -1,14 +1,13 @@
+# frozen_string_literal: true
+
 class CatalogSearchService
-  WEIGHTS = { title: 1.0, author: 1.1, authority: 0.7 }.freeze
-  THRESHOLD = 50.0
+  WEIGHTS = CatalogSearch::Scorer::WEIGHTS
+  THRESHOLD = CatalogSearch::Scorer::THRESHOLD
   SEMANTIC_THRESHOLD = 25.0
-  DEFAULT_W_SEMANTIC = 0.35
-  # Tightened from 200 -> 50 to cut memory + scoring time on Render
-  # free tier. 50 candidates is still more than enough for the
-  # Levenshtein + semantic scoring to surface the right book at
-  # the top of the top-100 results.
-  CANDIDATE_LIMIT = 50
-  SEARCH_RESULT_LIMIT = 500
+  MIN_SEMANTIC_COSINE = CatalogSearch::Scorer::MIN_SEMANTIC_COSINE
+  DEFAULT_W_SEMANTIC = CatalogSearch::Scorer::DEFAULT_W_SEMANTIC
+  CANDIDATE_LIMIT = CatalogSearch::CandidateFinder::CANDIDATE_LIMIT
+  SEARCH_RESULT_LIMIT = CatalogSearch::CandidateFinder::SEARCH_RESULT_LIMIT
 
   def self.search(query, limit: 100, w_semantic: DEFAULT_W_SEMANTIC, debug: false)
     new.search(query, limit: limit, w_semantic: w_semantic, debug: debug)
@@ -17,297 +16,41 @@ class CatalogSearchService
   def search(query, limit: 100, w_semantic: DEFAULT_W_SEMANTIC, debug: false)
     return [] if query.blank?
 
-    normalized_query = normalize_text(query)
-    query_tokens = normalized_query.split(/\s+/).reject(&:blank?)
+    normalized_query = FuzzyText.normalize_text(query)
+    query_tokens = normalized_query.split(" ").reject(&:blank?)
     return [] if query_tokens.empty?
 
-    # Only ask the embedder for a vector if the runtime model is
-    # available; otherwise the search degrades to token-only.
+    non_stopword_tokens = query_tokens.reject { |t| t.length < 3 || FuzzyText::SPANISH_STOPWORDS.include?(t) }
+    significant_tokens = non_stopword_tokens.empty? ? query_tokens : non_stopword_tokens
+
     embedder = QueryEmbedder.default
     query_embedding = embedder.available? ? embedder.encode(query) : nil
-
     requested_limit = limit.to_i.clamp(1, SEARCH_RESULT_LIMIT)
 
-    candidate_sources = Hash.new { |h, k| h[k] = [] }
-    candidate_ids = candidate_books(query_tokens, limit: requested_limit, candidate_sources: candidate_sources).pluck(:id)
-
-    # When any query token matches an existing author name, suppress
-    # the authority-tier contribution to the score. Books that merely
-    # have the query's word as an authority tag (e.g. Rexroth's "Cita
-    # con los clásicos", which lists Shakespeare among ~30 classical-
-    # author authorities) would otherwise match the search and pollute
-    # the result set. Multi-word topic queries (e.g. "mexican revolution")
-    # don't match any author name, so authority matching still works
-    # for them.
-    query_matches_author = query_tokens.any? do |tok|
-      next false if tok.length < 3
-      Book.where("LOWER(author) LIKE ?", "%#{ActiveRecord::Base.sanitize_sql_like(tok)}%").exists?
-    end
-
-    # Load embeddings by id first. When a query vector exists, scan the
-    # bounded embedding corpus (about 7,840 books in production) without
-    # hydrating full Book records so semantic-only searches can contribute
-    # candidates even when literal/FTS matching finds nothing.
-    embeddings_by_id = {}
-    if query_embedding
-      semantic_ids = semantic_candidate_ids(query_embedding, limit: requested_limit, embeddings_by_id: embeddings_by_id)
-      candidate_ids = (candidate_ids + semantic_ids).uniq.first(SEARCH_RESULT_LIMIT)
-    else
-      embeddings_by_id = Book.where(id: candidate_ids)
-                             .where.not(embedding: nil)
-                             .pluck(:id, :embedding)
-                             .to_h
-                             .transform_values { |bytes| bytes&.unpack("e*") }
-    end
-
-    return [] if candidate_ids.empty?
-
-    candidates = Book.includes(:authorities, :outgoing_connections, :incoming_connections)
-                     .where(id: candidate_ids)
-
-    scored = candidates.filter_map do |book|
-      score_book(book, query_tokens, query_embedding, embeddings_by_id[book.id], w_semantic,
-                 suppress_authority: query_matches_author, debug: debug,
-                 candidate_sources: candidate_sources[book.id])
-    end
-
-    scored.sort_by! { |b| -b[:match_score] }
-    scored.first(requested_limit)
-  end
-
-  private
-
-  def candidate_books(query_tokens, limit: CANDIDATE_LIMIT, candidate_sources: nil)
-    # Two candidate sources, merged with the LIKE-exact results FIRST
-    # so the FTS5 fuzzy results only fill the remaining slots:
-    #
-    #   1. LIKE exact + prefix  (always wins when it matches)
-    #        - '%shakespeare%'  matches the 11 Shakespeare-author books
-    #        - '%shake%'        catches end-of-word typos
-    #   2. FTS5 fuzzy match  (filler, up to CANDIDATE_LIMIT)
-    #        - trigram tokenizer handles 'pedrp' -> 'pedro' and
-    #          'shakesrpeare' -> 'shakespeare' when the exact tier
-    #          doesn't find them
-    #
-    # The order matters: if we just OR'd them with a single LIMIT,
-    # FTS5's noisy common-trigram matches (e.g. 'sha', 'ake') fill
-    # the 50-candidate cap and push the real targets out. Doing
-    # the merge in Ruby with the exact tier first guarantees the
-    # precise matches always make it into the candidate set.
-    base = Book.includes(:authorities)
-    conditions = []
-    bindings = []
-    query_tokens.each do |tok|
-      add_like(conditions, bindings, tok)
-      if tok.length >= 5
-        add_like(conditions, bindings, tok[0, 5])
-      end
-    end
-
-    like_ids = conditions.any? ? base.where(conditions.join(" OR "), *bindings).distinct.pluck(:id) : []
-    fuzzy_ids = fuzzy_candidate_ids(query_tokens)
-    transposition_ids = transposition_candidate_ids(query_tokens)
-
-    if candidate_sources
-      like_ids.each { |id| candidate_sources[id] << "like_exact_prefix" }
-      fuzzy_ids.each { |id| candidate_sources[id] << "fts_trigram" }
-      transposition_ids.each { |id| candidate_sources[id] << "bounded_transposition" }
-    end
-
-    # Exact + prefix matches first, then FTS5 fuzzy, then the bounded
-    # BookWord vocabulary fallback for transposition typos.
-    # uniq preserves order; .first(CANDIDATE_LIMIT) keeps the rank.
-    candidate_limit = [ CANDIDATE_LIMIT, limit.to_i ].max.clamp(1, SEARCH_RESULT_LIMIT)
-    merged_ids = (like_ids + fuzzy_ids + transposition_ids).uniq.first(candidate_limit)
-    return base.none if merged_ids.empty?
-
-    base.where(books: { id: merged_ids })
-  end
-
-  # Look up each query token in the FTS5 trigram index and union the
-  # returned book_ids. The query_tokens passed in are already
-  # normalized (lowercased + diacritics stripped) by the search
-  # method, matching how the index stores its words.
-  def fuzzy_candidate_ids(query_tokens)
-    FuzzyBookLookup.candidate_ids_for_tokens(query_tokens)
-  end
-
-  def transposition_candidate_ids(query_tokens)
-    FuzzyBookLookup.transposition_candidate_ids_for_tokens(query_tokens)
-  end
-
-  def semantic_candidate_ids(query_embedding, limit:, embeddings_by_id: {})
-    semantic_limit = [ CANDIDATE_LIMIT, limit.to_i ].max.clamp(1, SEARCH_RESULT_LIMIT)
-
-    scored = Book.where.not(embedding: nil).pluck(:id, :embedding).filter_map do |id, bytes|
-      vector = bytes&.unpack("e*")
-      next if vector.blank?
-
-      embeddings_by_id[id] = vector
-      cosine = cosine_similarity(query_embedding, vector)
-      next if cosine <= 0.0
-
-      [ id, cosine ]
-    end
-
-    scored.sort_by! { |(_, cosine)| -cosine }
-    scored.first(semantic_limit).map(&:first)
-  end
-
-  def add_like(conditions, bindings, pattern)
-    like = "%#{ActiveRecord::Base.sanitize_sql_like(pattern)}%"
-    conditions << "(LOWER(books.title) LIKE ? OR LOWER(books.author) LIKE ?)"
-    bindings << like
-    bindings << like
-  end
-
-  def trigrams_of(text)
-    FuzzyText.trigrams_of(text)
-  end
-
-  def score_book(book, query_tokens, query_embedding, book_embedding, w_semantic, suppress_authority: false, debug: false, candidate_sources: [])
-    norm_title = normalize_text(book.title)
-    norm_author = normalize_text(book.author || "")
-    norm_authorities = book.authorities.map { |a| normalize_text(a.name) }
-
-    title_score = calculate_token_score(query_tokens, norm_title)
-    author_score = calculate_token_score(query_tokens, norm_author)
-    auth_scores = norm_authorities.map { |a| calculate_token_score(query_tokens, a) }
-    best_auth_score = auth_scores.max || 0.0
-
-    weighted_title = title_score * WEIGHTS[:title]
-    weighted_author = author_score * WEIGHTS[:author]
-    weighted_auth = suppress_authority ? 0.0 : (best_auth_score * WEIGHTS[:authority])
-
-    token_score = [ weighted_title, weighted_author, weighted_auth ].max
-
-    semantic_cosine = nil
-    semantic_score = 0.0
-    if query_embedding && book_embedding
-      semantic_cosine = cosine_similarity(query_embedding, book_embedding)
-      semantic_score = [ semantic_cosine, 0.0 ].max * 100.0
-    end
-
-    # Hybrid blend: only kicks in when both token + semantic are
-    # available. If the book has no embedding, keep the legacy pure
-    # token score (so a typo'd query still returns literal matches).
-    final = if query_embedding && book_embedding
-              (1.0 - w_semantic) * token_score + w_semantic * semantic_score
-    else
-              token_score
-    end
-
-    threshold = query_embedding ? SEMANTIC_THRESHOLD : THRESHOLD
-    return nil if final < threshold
-
-    explanation = build_explanation(
-      book, query_tokens,
-      weighted_title, weighted_author, weighted_auth,
-      semantic_cosine
+    candidates = CatalogSearch::CandidateFinder.new.call(
+      normalized_query: normalized_query,
+      query_tokens: query_tokens,
+      significant_tokens: significant_tokens,
+      query_embedding: query_embedding,
+      limit: requested_limit
     )
+    return [] if candidates.books.empty?
 
-    result = {
-      biblio_id: book.id,
-      title: book.title,
-      author: book.author,
-      authority_count: book.authorities.size,
-      connection_count: book.outgoing_connections.size + book.incoming_connections.size,
-      authorities: book.authorities.map { |a| { authority_id: a.id, name: a.name, type: a.authority_type } },
-      match_score: final.round(1),
-      match_explanation: explanation,
-      semantic_score: semantic_cosine&.round(3)
-    }
-
-    if debug
-      result[:candidate_sources] = candidate_sources.uniq
-      result[:score_components] = {
-        title: weighted_title.round(1),
-        author: weighted_author.round(1),
-        authority: weighted_auth.round(1),
-        token: token_score.round(1),
-        semantic: semantic_score.round(1),
-        final: final.round(1)
-      }
+    scored = candidates.books.filter_map do |book|
+      CatalogSearch::Scorer.score_book(
+        book: book,
+        query_tokens: significant_tokens,
+        query_embedding: query_embedding,
+        book_embedding: candidates.embeddings_by_id[book.id],
+        connection_count: candidates.connection_counts[book.id] || 0,
+        w_semantic: w_semantic,
+        suppress_authority: candidates.query_matches_author,
+        debug: debug,
+        candidate_sources: candidates.candidate_sources[book.id]
+      )
     end
 
-    result
-  end
-
-  def build_explanation(book, query_tokens, wt, wa, wauth, semantic_cosine)
-    primary = if wa >= wt && wa >= wauth
-                "Coincidencia en autor: '#{book.author}'"
-    elsif wt >= wauth
-                "Coincidencia en título: '#{book.title}'"
-    else
-                matched_auth = book.authorities.find do |a|
-                                  calculate_token_score(query_tokens, normalize_text(a.name)) >= THRESHOLD / WEIGHTS[:authority]
-                                end
-                "Coincidencia en autoridad: '#{matched_auth&.name || 'Descriptor'}'"
-    end
-
-    if semantic_cosine && semantic_cosine >= 0.3
-      primary + " · Coincidencia semántica (coseno #{semantic_cosine.round(2)})"
-    else
-      primary
-    end
-  end
-
-  def normalize_text(text)
-    return "" if text.blank?
-    I18n.transliterate(text.to_s.downcase)
-        .gsub(/[^a-z0-9\s]/, " ")
-        .strip
-  end
-
-  def calculate_token_score(query_tokens, target_text)
-    return 0.0 if target_text.blank?
-
-    target_tokens = target_text.split(/\s+/).reject(&:blank?)
-    return 0.0 if target_tokens.empty?
-
-    token_scores = query_tokens.map do |qt|
-      best_t_score = 0.0
-      target_tokens.each do |tt|
-        if tt == qt
-          best_t_score = 100.0
-        elsif tt.start_with?(qt) && qt.length >= 3
-          score = 100.0 - ((tt.length - qt.length) * 5)
-          best_t_score = [ best_t_score, [ score, 60.0 ].max ].max
-        elsif qt.start_with?(tt) && tt.length >= 3
-          score = 100.0 - ((qt.length - tt.length) * 5)
-          best_t_score = [ best_t_score, [ score, 60.0 ].max ].max
-        elsif qt.length >= 4 && tt.length >= 4
-          dist = damerau_levenshtein_distance(qt, tt)
-          max_len = [ qt.length, tt.length ].max.to_f
-          similarity_ratio = 1.0 - (dist.to_f / max_len)
-          if dist <= 2 || similarity_ratio >= 0.7
-            score = similarity_ratio * 100.0
-            best_t_score = [ best_t_score, score ].max
-          end
-        end
-      end
-      best_t_score
-    end
-
-    token_scores.sum / token_scores.size.to_f
-  end
-
-  def levenshtein_distance(str1, str2)
-    FuzzyText.levenshtein_distance(str1, str2)
-  end
-
-  def damerau_levenshtein_distance(str1, str2)
-    FuzzyText.damerau_levenshtein_distance(str1, str2)
-  end
-
-  def cosine_similarity(a, b)
-    return 0.0 if a.nil? || b.nil? || a.empty? || b.empty?
-    sum = 0.0
-    i = 0
-    while i < a.length
-      sum += a[i] * b[i]
-      i += 1
-    end
-    sum
+    scored.sort_by! { |b| [ -b[:match_score], -(b[:semantic_score] || 0.0), b[:title].to_s, b[:biblio_id].to_s ] }
+    scored.first(requested_limit)
   end
 end

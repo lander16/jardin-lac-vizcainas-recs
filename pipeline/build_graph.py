@@ -1,145 +1,80 @@
+"""Build user-user Jaccard similarity graph from checkout history and patron names."""
+
 import csv
 import json
-import os
-import networkx as nx
+import sys
 
-def main():
-    csv_file = "data/koha_checkouts.csv"
-    output_dir = "data"
-    names_file = os.path.join(output_dir, "patron_names.json")
-    
-    # Load synthetic names mapping
-    patron_names = {}
-    if os.path.exists(names_file):
-        with open(names_file, mode='r', encoding='utf-8') as f:
-            patron_names = json.load(f)
-            
-    print("Loading data from CSV and building user-book sets...")
-    user_checkouts = {}
-    book_users = {}
-    book_titles = {}
-    
-    with open(csv_file, mode='r', encoding='utf-8') as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            user_id = row['user_id']
-            book_id = row['book_id']
-            title = row.get('title') or f"Book {book_id}"
-            
-            book_titles[book_id] = title
-            
-            if user_id not in user_checkouts:
-                user_checkouts[user_id] = set()
-            user_checkouts[user_id].add(book_id)
-            
-            if book_id not in book_users:
-                book_users[book_id] = set()
-            book_users[book_id].add(user_id)
-            
-    print(f"Loaded {len(user_checkouts)} users and {len(book_users)} books.")
-    
-    # Build User Jaccard Similarities
-    print("Computing user-user similarities based on checkouts...")
-    user_ids = sorted(list(user_checkouts.keys()))
-    user_graph_data = {}
-    
-    for u1 in user_ids:
+try:
+    from .config import CHECKOUTS_PATH, PATRON_NAMES_PATH, USER_GRAPH_PATH, write_json_atomic
+except ImportError:
+    from config import CHECKOUTS_PATH, PATRON_NAMES_PATH, USER_GRAPH_PATH, write_json_atomic
+
+TOP_SIMILAR_USERS = 30
+
+
+def compute_user_graph(user_checkouts, patron_names, top_k=TOP_SIMILAR_USERS):
+    user_ids = sorted(user_checkouts.keys())
+    sims_by_user = {uid: [] for uid in user_ids}
+
+    for i, u1 in enumerate(user_ids):
         u1_books = user_checkouts[u1]
-        similar_users = []
-        
-        for u2 in user_ids:
-            if u1 == u2:
-                continue
+        for u2 in user_ids[i + 1:]:
             u2_books = user_checkouts[u2]
-            intersection = u1_books.intersection(u2_books)
+            intersection = u1_books & u2_books
             if not intersection:
                 continue
-                
-            union = u1_books.union(u2_books)
-            jaccard = len(intersection) / len(union)
-            
-            # Save if there is some overlap
-            if jaccard > 0.0:
-                u2_info = patron_names.get(u2, {"name": f"User {u2[:8]}"})
-                similar_users.append({
-                    "user_id": u2,
-                    "name": u2_info["name"],
-                    "similarity": jaccard,
-                    "shared_books": sorted(list(intersection))
-                })
-                
-        # Sort similar users by similarity descending
-        similar_users.sort(key=lambda x: x["similarity"], reverse=True)
-        
-        u1_info = patron_names.get(u1, {"name": f"User {u1[:8]}"})
-        user_graph_data[u1] = {
-            "user_id": u1,
-            "name": u1_info["name"],
-            "checkouts": sorted(list(u1_books)),
-            "similar_users": similar_users[:30] # Top 30 similar users for viz size control
-        }
-        
-    user_graph_file = os.path.join(output_dir, "user_graph.json")
-    with open(user_graph_file, mode='w', encoding='utf-8') as f:
-        json.dump(user_graph_data, f, indent=2, ensure_ascii=False)
-    print(f"Saved user graph structure to {user_graph_file}")
-    
-    # Compute collaborative recommendations for each user
-    print("Generating collaborative recommendations...")
-    collab_recommendations = {}
-    
-    for u_target in user_ids:
-        target_books = user_checkouts[u_target]
-        recs = {}
-        
-        # Look at similar users
-        similar_users = user_graph_data[u_target]["similar_users"]
-        
-        for sim_user in similar_users:
-            u_other = sim_user["user_id"]
-            other_name = sim_user["name"]
-            similarity = sim_user["similarity"]
-            
-            # Books they read that target hasn't
-            other_books = user_checkouts[u_other]
-            candidate_books = other_books.difference(target_books)
-            
-            for b_id in candidate_books:
-                if b_id not in recs:
-                    recs[b_id] = {
-                        "book_id": b_id,
-                        "title": book_titles.get(b_id, f"Book {b_id}"),
-                        "score": 0.0,
-                        "contributing_users": []
-                    }
-                recs[b_id]["score"] += similarity
-                recs[b_id]["contributing_users"].append({
-                    "user_id": u_other,
-                    "name": other_name,
-                    "similarity": similarity
-                })
-                
-        # Format and sort recommendations
-        sorted_recs = []
-        for b_id, rec in recs.items():
-            # Sort contributing users by similarity descending
-            rec["contributing_users"].sort(key=lambda x: x["similarity"], reverse=True)
-            # Cap contributing users details for JSON size
-            sorted_recs.append({
-                "book_id": b_id,
-                "title": rec["title"],
-                "score": rec["score"],
-                "contributing_users": rec["contributing_users"][:10]
+            union_size = len(u1_books | u2_books)
+            jaccard = len(intersection) / union_size
+            shared = sorted(intersection)
+
+            u2_name = patron_names.get(u2, {}).get("name", f"User {u2[:8]}")
+            u1_name = patron_names.get(u1, {}).get("name", f"User {u1[:8]}")
+
+            sims_by_user[u1].append({
+                "user_id": u2,
+                "name": u2_name,
+                "similarity": jaccard,
+                "shared_books": shared,
             })
-            
-        sorted_recs.sort(key=lambda x: x["score"], reverse=True)
-        collab_recommendations[u_target] = sorted_recs[:50] # Top 50 collab recs
-        
-    collab_recs_file = os.path.join(output_dir, "collab_recommendations.json")
-    with open(collab_recs_file, mode='w', encoding='utf-8') as f:
-        json.dump(collab_recommendations, f, indent=2, ensure_ascii=False)
-    print(f"Saved collaborative recommendations to {collab_recs_file}")
-    print("Graph and Collaborative filtering pipeline completed successfully!")
+            sims_by_user[u2].append({
+                "user_id": u1,
+                "name": u1_name,
+                "similarity": jaccard,
+                "shared_books": shared,
+            })
+
+    graph = {}
+    for uid in user_ids:
+        peers = sorted(sims_by_user[uid], key=lambda item: (-item["similarity"], item["user_id"]))
+        name = patron_names.get(uid, {}).get("name", f"User {uid[:8]}")
+        graph[uid] = {
+            "user_id": uid,
+            "name": name,
+            "checkouts": sorted(user_checkouts[uid]),
+            "similar_users": peers[:top_k],
+        }
+    return graph
+
+
+def main():
+    if not CHECKOUTS_PATH.exists():
+        print(f"Error: {CHECKOUTS_PATH} not found.", file=sys.stderr)
+        sys.exit(1)
+
+    patron_names = {}
+    if PATRON_NAMES_PATH.exists():
+        with open(PATRON_NAMES_PATH, mode="r", encoding="utf-8") as handle:
+            patron_names = json.load(handle)
+
+    user_checkouts = {}
+    with open(CHECKOUTS_PATH, mode="r", encoding="utf-8") as handle:
+        for row in csv.DictReader(handle):
+            user_checkouts.setdefault(row["user_id"], set()).add(row["book_id"])
+
+    user_graph_data = compute_user_graph(user_checkouts, patron_names)
+    write_json_atomic(USER_GRAPH_PATH, user_graph_data)
+    print(f"Saved user graph ({len(user_graph_data)} patrons) -> {USER_GRAPH_PATH}")
+
 
 if __name__ == "__main__":
     main()

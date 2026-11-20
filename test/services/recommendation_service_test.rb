@@ -96,4 +96,63 @@ class RecommendationServiceTest < ActiveSupport::TestCase
       assert_includes rec[:explanation], "Ciencia"
     end
   end
+
+  test "excludes zero-weight signals and normalizes remaining weights" do
+    similar_patron = Patron.create!(id: "p_zero", name: "Similar Zero")
+    Checkout.create!(patron: similar_patron, book: @book3)
+    UserSimilarity.create!(patron: @patron, similar_patron: similar_patron, jaccard_score: 0.95)
+    BookConnection.create!(source_book: @book1, target_book: @book2, weight: 4)
+
+    recs = RecommendationService.new(@patron).recommend(w_content: 0.2, w_collab: 0.0, w_auth: 0.2)
+
+    assert_equal [ "b2" ], recs.map { |r| r[:book_id] }
+    rec = recs.first
+    assert_in_delta 1.0, rec[:score], 1e-4
+    assert_equal 100, rec[:match_percentage]
+    assert_equal "multiple", rec[:primary_source]
+    assert_equal [ "content", "authority" ], rec[:sources]
+    assert_equal 0.0, rec[:raw_scores][:collaborative]
+  end
+
+  test "deduplicates repeat checkouts for both target patron and similar peers" do
+    Checkout.create!(patron: @patron, book: @book1, checkout_date: 1.day.ago)
+    Checkout.create!(patron: @patron, book: @book1, checkout_date: 2.days.ago)
+
+    peer_repeat = Patron.create!(id: "p_repeat", name: "Peer Repeat")
+    peer_strong = Patron.create!(id: "p_strong", name: "Peer Strong")
+    book4 = Book.create!(id: "b4_dedup", title: "Book Four", author: "Author Four")
+
+    UserSimilarity.create!(patron: @patron, similar_patron: peer_repeat, jaccard_score: 0.5)
+    UserSimilarity.create!(patron: @patron, similar_patron: peer_strong, jaccard_score: 0.8)
+
+    3.times { |i| Checkout.create!(patron: peer_repeat, book: @book3, checkout_date: i.days.ago) }
+    Checkout.create!(patron: peer_strong, book: book4)
+
+    content_recs = RecommendationService.new(@patron).recommend(w_content: 1.0, w_collab: 0.0, w_auth: 0.0)
+    assert_not_includes content_recs.map { |r| r[:book_id] }, @book1.id
+    assert_in_delta 0.8, content_recs.first[:raw_scores][:content], 1e-4
+
+    collab_recs = RecommendationService.new(@patron).recommend(w_content: 0.0, w_collab: 1.0, w_auth: 0.0)
+    assert_equal [ book4.id, @book3.id ], collab_recs.map { |r| r[:book_id] }
+    assert_in_delta 0.8, collab_recs.first[:raw_scores][:collaborative], 1e-4
+    assert_in_delta 0.5, collab_recs.second[:raw_scores][:collaborative], 1e-4
+  end
+
+  test "diversify_by_author pulls candidates beyond top N when one author dominates" do
+    ContentSimilarity.delete_all
+
+    prolific1 = Book.create!(id: "b_pro_1", title: "Prolific 1", author: "Dominating Author")
+    prolific2 = Book.create!(id: "b_pro_2", title: "Prolific 2", author: "Dominating Author")
+    prolific3 = Book.create!(id: "b_pro_3", title: "Prolific 3", author: "Dominating Author")
+    distinct = Book.create!(id: "b_distinct", title: "Distinct", author: "Distinct Author")
+
+    ContentSimilarity.create!(book: @book1, similar_book: prolific1, similarity: 1.00)
+    ContentSimilarity.create!(book: @book1, similar_book: prolific2, similarity: 0.99)
+    ContentSimilarity.create!(book: @book1, similar_book: prolific3, similarity: 0.98)
+    ContentSimilarity.create!(book: @book1, similar_book: distinct, similarity: 0.97)
+
+    recs = RecommendationService.new(@patron).recommend(w_content: 1.0, w_collab: 0.0, w_auth: 0.0, limit: 2)
+
+    assert_equal [ prolific1.id, distinct.id ], recs.map { |r| r[:book_id] }
+  end
 end

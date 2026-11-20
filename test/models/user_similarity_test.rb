@@ -50,4 +50,24 @@ class UserSimilarityTest < ActiveSupport::TestCase
     assert_equal @patron, @user_similarity.patron
     assert_equal @similar_patron, @user_similarity.similar_patron
   end
+
+  test "prevents self-referential similarity" do
+    self_ref = UserSimilarity.new(patron: @patron, similar_patron: @patron, jaccard_score: 0.5)
+
+    assert_not self_ref.valid?
+    assert_includes self_ref.errors[:similar_patron_id], "cannot be the same as patron_id"
+  end
+
+  test "validates jaccard_score is within 0.0 to 1.0" do
+    [ 0.0, 0.5, 1.0 ].each do |valid_score|
+      us = UserSimilarity.new(patron: @patron, similar_patron: @similar_patron, jaccard_score: valid_score)
+      assert us.valid?, "expected jaccard_score #{valid_score} to be valid"
+    end
+
+    [ nil, -0.01, 1.01 ].each do |invalid_score|
+      us = UserSimilarity.new(patron: @patron, similar_patron: @similar_patron, jaccard_score: invalid_score)
+      assert_not us.valid?, "expected jaccard_score #{invalid_score.inspect} to be invalid"
+      assert_not_empty us.errors[:jaccard_score]
+    end
+  end
 end

@@ -45,4 +45,27 @@ class BooksControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_match(/No se encontraron obras similares/, response.body)
   end
+
+  test "should list distinct patrons when a patron checks out the same book multiple times" do
+    Checkout.create!(book: @book, patron: @patron, checkout_date: 1.day.ago)
+    Checkout.create!(book: @book, patron: @patron, checkout_date: 2.days.ago)
+    second_patron = Patron.create!(id: "patron_test_2", name: "Úrsula Iguarán")
+    Checkout.create!(book: @book, patron: second_patron, checkout_date: 3.days.ago)
+
+    get book_url(@book)
+
+    assert_response :success
+    assert_select "h2.book-detail-section-title", text: /Historial de Lecturas \(2 lectores\)/
+    assert_select ".book-patron-link", count: 2
+    assert_select ".book-patron-link", count: 1, text: /Aurelio Buendía/
+    assert_select ".book-patron-link", count: 1, text: /Úrsula Iguarán/
+  end
+
+  test "should render show without inline onclick handlers" do
+    get book_url(@book)
+
+    assert_response :success
+    assert_select "[onclick]", count: 0
+    assert_no_match(/\s+onclick\s*=/i, response.body)
+  end
 end

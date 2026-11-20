@@ -16,8 +16,8 @@ Rails.application.routes.draw do
   get "catalog", to: "catalog#index", as: :catalog
   get "catalog/search", to: "catalog#search", as: :catalog_search
   get "catalog/graph/:id", to: "catalog#graph", as: :catalog_graph
-  get "catalog/authorities/:type", to: "catalog#authorities_by_type", as: :catalog_authorities_by_type
-  get "catalog/authorities/:type/:id", to: "catalog#authority_detail", as: :catalog_authority_detail
+  get "catalog/authorities", to: "catalog#authorities_by_type", as: :catalog_authorities_by_type
+  get "catalog/authorities/:id", to: "catalog#authority_detail", as: :catalog_authority_detail
 
   # JSON API for D3 Graph visualizations
   namespace :api do
@@ -26,7 +26,9 @@ Rails.application.routes.draw do
   end
 
   # Custom error pages
+  match "/400", to: "errors#bad_request", via: :all
   match "/404", to: "errors#not_found", via: :all
+  match "/422", to: "errors#unprocessable_entity", via: :all
   match "/500", to: "errors#internal_server_error", via: :all
 
   # Liveness / data-presence probe. Used to diagnose "empty search"

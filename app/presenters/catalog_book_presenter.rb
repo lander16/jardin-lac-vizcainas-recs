@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class CatalogBookPresenter
   AuthorityItem = Struct.new(:name, :authority_type, keyword_init: true) do
     def type
@@ -13,15 +15,15 @@ class CatalogBookPresenter
 
   attr_reader :item, :connection_counts
 
-  def self.wrap(items, connection_counts: {})
+  def self.wrap(items, connection_counts: nil)
     Array(items).map do |item|
       item.is_a?(self) ? item : new(item, connection_counts: connection_counts)
     end
   end
 
-  def initialize(item, connection_counts: {})
+  def initialize(item, connection_counts: nil)
     @item = item
-    @connection_counts = connection_counts || {}
+    @connection_counts = connection_counts
   end
 
   def id
@@ -67,7 +69,7 @@ class CatalogBookPresenter
   def connection_count
     if hash?
       count = @item[:connection_count] || @item["connection_count"]
-      return count if count
+      return count unless count.nil?
 
       lookup_connection_count || 0
     else
@@ -119,13 +121,11 @@ class CatalogBookPresenter
   end
 
   def lookup_connection_count
-    return nil if @connection_counts.blank?
+    return nil if @connection_counts.nil?
+    return @connection_counts[id] if @connection_counts.key?(id)
+    return @connection_counts[id.to_s] if id && @connection_counts.key?(id.to_s)
 
-    if @connection_counts.key?(id)
-      @connection_counts[id] || 0
-    elsif id && @connection_counts.key?(id.to_s)
-      @connection_counts[id.to_s] || 0
-    end
+    0
   end
 
   def precomputed_or_association_connection_count
